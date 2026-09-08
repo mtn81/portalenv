@@ -1,0 +1,20 @@
+[package]
+name = "portalenv"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rust friendly ergonomic env configuration library."
+readme = "../../README.md"
+keywords = ["env", "dotenv", "envy", "environment", "settings", "config"]
+
+[dependencies]
+portalenv-macros.workspace = true
+portalenv-core.workspace = true
+
+[dev-dependencies]
+trybuild = "1.0.111"
+
+[features]
+default = []

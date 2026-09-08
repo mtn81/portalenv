@@ -1,0 +1,17 @@
+name: "Run test for all packages"
+description: ""
+runs:
+  using: "composite"
+  steps:
+    - name: Setup wasmtime
+      uses: mwilliamson/setup-wasmtime-action@v3
+      with:
+        wasmtime-version: "48.0.1"
+
+    - name: Format and lint check
+      shell: bash
+      run: make check
+
+    - name: Run all tests
+      shell: bash
+      run: make test-all
