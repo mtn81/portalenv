@@ -16,6 +16,6 @@ repository = "https://github.com/mtn81/portalenv"
 path = "packages/core"
 version = "0.1.0"      #tag:release-version
 
-[workspace.dependencies.portalenv-macros]
-path = "packages/macros"
-version = "0.1.0"        #tag:release-version
+[workspace.dependencies.portalenv-macro]
+path = "packages/macro"
+version = "0.1.0"       #tag:release-version

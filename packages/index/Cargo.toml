@@ -10,11 +10,12 @@ readme = "../../README.md"
 keywords = ["env", "dotenv", "envy", "environment", "settings", "config"]
 
 [dependencies]
-portalenv-macros.workspace = true
+portalenv-macro.workspace = true
 portalenv-core.workspace = true
 
 [dev-dependencies]
 trybuild = "1.0.111"
+serial_test = "4.0.1"
 
 [features]
 default = []
