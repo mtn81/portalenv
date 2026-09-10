@@ -35,7 +35,7 @@ where
                 .captures_iter(c)
                 .flat_map(|elem| {
                     if let Some(elem) = elem.get(1) {
-                        Some(T::from_env_str(EnvStrValue::new(&s.name, elem.as_str())))
+                        Some(T::from_env_str(EnvStrValue::new(s.name, elem.as_str())))
                     } else {
                         None
                     }
@@ -53,7 +53,7 @@ where
 {
     fn from_env_str(s: EnvStrValue) -> Result<Self> {
         let v: Vec<_> = Vec::<T>::from_env_str(s)?;
-        Ok(HashSet::from_iter(v.into_iter()))
+        Ok(HashSet::from_iter(v))
     }
 }
 
@@ -73,8 +73,8 @@ where
                         && let Some(v) = c.get(2)
                     {
                         Ok(Some((
-                            K::from_env_str(EnvStrValue::new(&s.name, &k.as_str()))?,
-                            V::from_env_str(EnvStrValue::new(&s.name, &v.as_str()))?,
+                            K::from_env_str(EnvStrValue::new(s.name, k.as_str()))?,
+                            V::from_env_str(EnvStrValue::new(s.name, v.as_str()))?,
                         )))
                     } else {
                         Ok(None)

@@ -1,6 +1,5 @@
 macro_rules! define {
     () => {
-        ///
         #[proc_macro_error]
         #[proc_macro_derive(EnvPortal, attributes(env_portal))]
         pub fn derive_env_portal(input: TokenStream) -> TokenStream {

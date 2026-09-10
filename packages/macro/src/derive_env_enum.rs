@@ -1,6 +1,5 @@
 macro_rules! define {
     () => {
-        ///
         #[proc_macro_error]
         #[proc_macro_derive(EnvEnum)]
         pub fn derive_env_enum(input: TokenStream) -> TokenStream {

@@ -10,9 +10,7 @@ pub trait EnvPortal {
     where
         Self: Sized,
     {
-        let env = Self::env_name_key()
-            .map(|key| std::env::var(key))
-            .transpose()?;
+        let env = Self::env_name_key().map(std::env::var).transpose()?;
 
         // load from .env file if it exists
         if let Some(file) = Self::dotenv_file() {
