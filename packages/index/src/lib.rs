@@ -1,4 +1,4 @@
-//! **PortalEnv** is a rust-friendly ergonomic env configuration library.
+//! **PortalEnv** is a Rust-friendly, ergonomic and type-safe environment configuration library.
 //!
 
 pub mod docs;

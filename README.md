@@ -1,12 +1,12 @@
 # PortalEnv
 
-PortalEnv is a Rust-friendly, ergonomic, and type-safe environment configuration library.
+PortalEnv is a Rust-friendly, ergonomic and type-safe environment configuration library.
 
 PortalEnv provides a clearer view of your configuration.
 
-- Eliminate duplicate common settings.
-- The environment variables in use become clear at a glance.
-- The differences between environments become clear.
+- Eliminate duplicated common settings.
+- See at a glance which environment variables are in use.
+- See clearly how environments differ.
 
 <div align="left">
   <!-- Crates version -->
@@ -28,15 +28,30 @@ PortalEnv provides a clearer view of your configuration.
 
 ## Features
 
-You can embed environment configuration directly in your Rust code using dedicated derive macros.
+Embed environment configuration directly in your Rust code with dedicated derive macros.
 
-- Native Rust expressions are supported as configuration values.
+- Native Rust expressions as configuration values.
 - Environment variable references.
 - Value switching by environment name.
-- Array-like, `HashMap`, and tuple syntax support.
+- Array, map, and tuple literal syntax.
 - Nested object configuration.
-- Type-safe implicit conversion from string values including your custom value types.
+- Type-safe implicit conversion from string values, including custom value types.
 - Dotenv file support via `dotenvy`.
+
+## Installation
+
+Run the following command:
+
+```bash
+cargo add portalenv
+```
+
+Or add it to your `Cargo.toml` manually:
+
+```toml
+[dependencies]
+portalenv = "0.1"
+```
 
 ## Example
 
@@ -67,6 +82,10 @@ use std::collections::{HashMap, HashSet};
             vec: ["this", "is", "a", "demo"],
             set: [1, 2, 3],
             map: {
+                count_a: 100,
+                count_b: 200,
+            },
+            child: DemoChild {
                 name: "portal env",
                 amount: 20,
                 size: SizeType::Small,
@@ -91,7 +110,7 @@ pub struct EmailConfig {
 pub struct EmailAddress(String);
 impl FromEnvStrValue for EmailAddress {
     fn from_env_str(s: EnvStrValue) -> Result<Self> {
-        // any validation logic...
+        // return Err(...) here if the value is invalid
         Ok(EmailAddress(s.into()))
     }
 }
@@ -100,6 +119,13 @@ pub struct DemoConfig {
     vec: Vec<String>,
     set: HashSet<u32>,
     map: HashMap<String, u32>,
+    child: DemoChild,
+}
+
+pub struct DemoChild {
+    name: String,
+    amount: u32,
+    size: SizeType,
 }
 
 #[derive(EnvEnum)]
@@ -116,7 +142,7 @@ fn main() {
 
 For detailed guides, see the [docs page](https://docs.rs/portalenv/latest/portalenv/docs/index.html)
 
-### License
+## License
 
 Licensed under either of [Apache License, Version
 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.
