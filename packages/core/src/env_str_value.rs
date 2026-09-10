@@ -230,7 +230,7 @@ static RE_HASHMAP: LazyLock<Regex> = LazyLock::new(|| {
     regex::Regex::new(r"(?s)^\s*\{(.*)\}\s*$").expect("Failed to create regex for HashMap parsing")
 });
 static RE_ENTRY: LazyLock<Regex> = LazyLock::new(|| {
-    regex::Regex::new(r#"(?s)([^\:]+)\:\s*("[^"]*"|[^\,\s]+),?"#)
+    regex::Regex::new(r#"(?s)\s*("[^"]+"|[^\:]+)\s*\:\s*("[^"]*"|[^\,\s]+),?"#)
         .expect("Failed to create regex for Entry parsing")
 });
 static RE_TUPLE: LazyLock<Regex> = LazyLock::new(|| {

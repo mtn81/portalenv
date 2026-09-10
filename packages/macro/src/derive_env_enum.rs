@@ -34,6 +34,7 @@ pub fn exec(input: TokenStream2) -> TokenStream2 {
         let vname = vident.to_string();
         quote! {
             #vname => Ok(#ident::#vident),
+            concat!(stringify!(#ident), "::", #vname) => Ok(#ident::#vident),
         }
     });
 

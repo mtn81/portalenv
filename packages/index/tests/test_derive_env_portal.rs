@@ -120,7 +120,7 @@ fn test_derive_env_portal_for_complex_data() {
             "A": "a",
             "B": "b"
         },
-        qux: r#"{ A: A, B: B }"#,
+        qux: r#"{ A: A, "TestEnum::B" : TestEnum::B }"#,
     })]
     pub struct EnvConfig {
         pub hoge: Vec<String>,
