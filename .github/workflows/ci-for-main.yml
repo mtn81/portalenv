@@ -3,8 +3,7 @@ name: CI
 on:
   push:
     branches:
-      # - main
-      - dummy
+      - main
 
 env:
   CARGO_TERM_COLOR: always
