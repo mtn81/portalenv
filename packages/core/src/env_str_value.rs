@@ -183,6 +183,12 @@ impl EnvStrValue {
     }
 }
 
+impl From<EnvStrValue> for String {
+    fn from(s: EnvStrValue) -> Self {
+        s.value
+    }
+}
+
 impl FromEnvStrValue for String {
     fn from_env_str(s: EnvStrValue) -> Result<Self> {
         Ok(s.value)

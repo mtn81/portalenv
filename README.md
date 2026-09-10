@@ -2,6 +2,12 @@
 
 PortalEnv is a Rust-friendly, ergonomic, and type-safe environment configuration library.
 
+PortalEnv provides a clearer view of your configuration.
+
+- Eliminate duplicate common settings.
+- The environment variables in use become clear at a glance.
+- The differences between environments become clear.
+
 <div align="left">
   <!-- Crates version -->
   <a href="https://crates.io/crates/portalenv">
@@ -29,14 +35,8 @@ You can embed environment configuration directly in your Rust code using dedicat
 - Value switching by environment name.
 - Array-like, `HashMap`, and tuple syntax support.
 - Nested object configuration.
-- Type-safe implicit conversion from string values.
+- Type-safe implicit conversion from string values including your custom value types.
 - Dotenv file support via `dotenvy`.
-
-PortalEnv also gives you a clearer view of your configuration.
-
-- Eliminate duplicate common settings.
-- The environment variables in use become clear at a glance.
-- The differences between environments become clear.
 
 ## Example
 
@@ -85,9 +85,17 @@ pub struct ServerConfig {
     port: u32,
 }
 pub struct EmailConfig {
-    address: String,
+    address: EmailAddress,
     title: Option<String>,
 }
+pub struct EmailAddress(String);
+impl FromEnvStrValue for EmailAddress {
+    fn from_env_str(s: EnvStrValue) -> Result<Self> {
+        // any validation logic...
+        Ok(EmailAddress(s.into()))
+    }
+}
+
 pub struct DemoConfig {
     vec: Vec<String>,
     set: HashSet<u32>,

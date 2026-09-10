@@ -307,3 +307,28 @@ fn test_derive_env_portal_with_env_partial_match() {
     let config = EnvConfig::from_env().unwrap();
     assert_eq!(config.hoge, None);
 }
+
+#[test]
+fn test_derive_env_portal_with_custom_value_type() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        mapping = {
+            hoge: "test",
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: MyValue,
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct MyValue(String);
+
+    impl FromEnvStrValue for MyValue {
+        fn from_env_str(s: EnvStrValue) -> Result<Self> {
+            Ok(Self(s.to_string()))
+        }
+    }
+
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, MyValue("test".to_string()));
+}
