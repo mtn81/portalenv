@@ -5,7 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Rust-friendly, ergonomic, and type-safe environment configuration library."
+description = "Rust-friendly, ergonomic and type-safe environment configuration library."
 readme = "../../README.md"
 keywords = ["env", "dotenv", "environment", "settings", "config"]
 
