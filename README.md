@@ -1,6 +1,6 @@
 # PortalEnv
 
-PortalEnv is a rust-friendly, ergonomic and type safe env configuration library.
+PortalEnv is a Rust-friendly, ergonomic, and type-safe environment configuration library.
 
 <div align="left">
   <!-- Crates version -->
@@ -20,28 +20,29 @@ PortalEnv is a rust-friendly, ergonomic and type safe env configuration library.
   </a>
 </div>
 
-### Features
+## Features
 
-You can embed env configuration in rust codes with dedicated derive macros.
+You can embed environment configuration directly in your Rust code using dedicated derive macros.
 
-- Natively rust expression is enabled.
-- Env variable reference.
-- Env matching with envronment name.
-- Array-like, HashMap, Tuple syntax support.
+- Native Rust expressions are supported as configuration values.
+- Environment variable references.
+- Value switching by environment name.
+- Array-like, `HashMap`, and tuple syntax support.
 - Nested object configuration.
-- Implicit type conversion from string value with type safety.
-- dotenv file support via `dotenvy`.
+- Type-safe implicit conversion from string values.
+- Dotenv file support via `dotenvy`.
 
-By using PortalEnv, you can gain clearer configuration.
+PortalEnv also gives you a clearer view of your configuration.
 
 - Eliminate duplicate common settings.
 - The environment variables in use become clear at a glance.
 - The differences between environments become clear.
 
-### Example
+## Example
 
 ```rust
 use portalenv::*;
+use std::collections::{HashMap, HashSet};
 
 #[derive(EnvPortal)]
 #[env_portal(
@@ -55,8 +56,8 @@ use portalenv::*;
         },
         email: EmailConfig {
             address: env_match {
-                "local" | "stg" => "potalenv-test@xxx.yyy",
-                "prd" => "potalenv@xxx.yyy",
+                "local" | "stg" => "portalenv-test@xxx.yyy",
+                "prd" => "portalenv@xxx.yyy",
             },
             title: env_partial_match {
                 "prd" => "portalenv mail"
@@ -101,15 +102,13 @@ pub enum SizeType {
 fn main() {
     let _config = EnvConfig::from_env().unwrap();
 }
-
-
 ```
 
-### Guides
+## Guides
 
-For detailed guides, see [docs page](https://docs.rs/portalenv/latest/portalenv/docs/index.html)
+For detailed guides, see the [docs page](https://docs.rs/portalenv/latest/portalenv/docs/index.html)
 
-#### License
+### License
 
 Licensed under either of [Apache License, Version
 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.
