@@ -29,7 +29,7 @@ You can embed env configuration in rust codes with dedicated derive macros.
 - Env matching with envronment name.
 - Array-like, HashMap, Tuple syntax support.
 - Nested object configuration.
-- Implicit type conversion from string value.
+- Implicit type conversion from string value with type safety.
 - dotenv file support via `dotenvy`.
 
 By using PortalEnv, you can gain clearer configuration.
@@ -57,6 +57,9 @@ use portalenv::*;
             address: env_match {
                 "local" | "stg" => "potalenv-test@xxx.yyy",
                 "prd" => "potalenv@xxx.yyy",
+            },
+            title: env_partial_match {
+                "prd" => "portalenv mail"
             }
         },
         demo: DemoConfig {
@@ -82,6 +85,7 @@ pub struct ServerConfig {
 }
 pub struct EmailConfig {
     address: String,
+    title: Option<String>,
 }
 pub struct DemoConfig {
     vec: Vec<String>,
