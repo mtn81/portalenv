@@ -1,6 +1,8 @@
 use portalenv_core::*;
+use serial_test::serial;
 
 #[test]
+#[serial]
 fn test_with_dot_env() {
     #[derive(Debug, PartialEq)]
     struct TestStruct {
@@ -33,6 +35,7 @@ fn test_with_dot_env() {
 }
 
 #[test]
+#[serial]
 fn test_with_env_key_and_dot_env() {
     #[derive(Debug, PartialEq)]
     struct TestStruct {

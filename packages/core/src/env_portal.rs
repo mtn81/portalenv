@@ -37,6 +37,8 @@ pub trait EnvPortal {
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
+
     use super::*;
 
     #[derive(Debug, PartialEq)]
@@ -60,6 +62,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_try_from_env() {
         unsafe {
             std::env::set_var("TEST_ENV_KEY", "test_env");
