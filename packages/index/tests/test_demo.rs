@@ -6,38 +6,37 @@ fn test() {
 
     #[derive(EnvPortal)]
     #[env_portal(
-    dotenv_file = ".env",
-    env_name_key = "APP_ENV",
-    mapping = {
-        app_name: "Demo",
-        server: ServerConfig {
-            host: env_var::SERVER_HOST,
-            port: env_var::SERVER_PORT,
-        },
-        email: EmailConfig {
-            address: env_match {
-                "local" | "stg" => "portalenv-test@xxx.yyy",
-                "prd" => "portalenv@xxx.yyy",
+        env_name_key = "APP_ENV",
+        mapping = {
+            app_name: "Demo",
+            server: ServerConfig {
+                host: env_var::SERVER_HOST,
+                port: env_var::SERVER_PORT,
             },
-            title: env_partial_match {
-                "prd" => "portalenv mail"
+            email: EmailConfig {
+                address: env_match {
+                    "local" | "stg" => "portalenv-test@xxx.yyy",
+                    "prd" => "portalenv@xxx.yyy",
+                },
+                title: env_partial_match {
+                    "prd" => "portalenv mail"
+                }
+            },
+            demo: DemoConfig {
+                vec: ["this", "is", "a", "demo"],
+                set: [1, 2, 3],
+                map: {
+                    count_a: 100,
+                    count_b: 200,
+                },
+                child: DemoChild {
+                    name: "portal env",
+                    amount: 20,
+                    size: SizeType::Small,
+                },
             }
-        },
-        demo: DemoConfig {
-            vec: ["this", "is", "a", "demo"],
-            set: [1, 2, 3],
-            map: {
-                count_a: 100,
-                count_b: 200,
-            },
-            child: DemoChild {
-                name: "portal env",
-                amount: 20,
-                size: SizeType::Small,
-            },
         }
-    }
-)]
+    )]
     pub struct EnvConfig {
         app_name: String,
         server: ServerConfig,

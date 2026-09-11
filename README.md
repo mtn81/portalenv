@@ -61,7 +61,6 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(EnvPortal)]
 #[env_portal(
-    dotenv_file = ".env",
     env_name_key = "APP_ENV",
     mapping = {
         app_name: "Demo",
