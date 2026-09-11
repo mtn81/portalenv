@@ -61,7 +61,7 @@ pub fn exec(input: TokenStream2) -> TokenStream2 {
     let dotenv_file = attr_args
         .dotenv_file
         .map(|lit| quote!(Some(#lit)))
-        .unwrap_or_else(|| quote!(None));
+        .unwrap_or_else(|| quote!(Some(concat!(env!("CARGO_MANIFEST_DIR"), "/.env"))));
     let env_name_key = attr_args
         .env_name_key
         .map(|lit| quote!(Some(#lit)))
