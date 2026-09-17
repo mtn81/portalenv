@@ -110,6 +110,12 @@ fn make_constructor(
                 quote!(#expr)
             }
             MappingValue::Nested { ty, mapping } => make_constructor(Some(name), Some(ty), mapping),
+
+            MappingValue::EnvInclude(ty) => {
+                quote!(
+                    #ty::from_env()?
+                )
+            }
             MappingValue::EnvMatch { arms, partial } => {
                 let arms = arms.iter().map(|(pat, value)| {
                     let value = make_mapping_value(name, value);
@@ -244,6 +250,7 @@ enum MappingValue {
         arms: Vec<(Pat, MappingValue)>,
         partial: bool,
     },
+    EnvInclude(Type),
 }
 
 impl Parse for MappingValue {
@@ -283,6 +290,12 @@ impl Parse for MappingValue {
             }
 
             Ok(MappingValue::EnvMatch { arms, partial })
+        } else if input.peek(kw::env_include) {
+            input.parse::<kw::env_include>()?;
+            input.parse::<token::Lt>()?;
+            let ty = input.parse()?;
+            input.parse::<token::Gt>()?;
+            Ok(MappingValue::EnvInclude(ty))
         } else if input.peek(Ident) && input.peek2(token::Brace) {
             let ty = input.parse()?;
             let mapping = input.parse()?;

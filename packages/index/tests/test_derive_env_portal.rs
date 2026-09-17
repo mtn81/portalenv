@@ -332,3 +332,32 @@ fn test_derive_env_portal_with_custom_value_type() {
     let config = EnvConfig::from_env().unwrap();
     assert_eq!(config.hoge, MyValue("test".to_string()));
 }
+
+#[test]
+fn test_derive_env_portal_with_env_include() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        mapping = {
+            hoge: "test-hoge",
+            other: env_include<OtherEnvConfig>
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+        pub other: OtherEnvConfig,
+    }
+
+    #[derive(EnvPortal)]
+    #[env_portal(
+        mapping = {
+            foo: "test-foo",
+        }
+    )]
+    pub struct OtherEnvConfig {
+        pub foo: String,
+    }
+
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "test-hoge".to_string());
+    assert_eq!(config.other.foo, "test-foo".to_string());
+}

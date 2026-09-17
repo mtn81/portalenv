@@ -16,6 +16,7 @@ lint-fix: ## Auto-fix formatting and clippy lints.
 test-all: ## Run all tests.
 	cargo test --verbose -- --nocapture
 	cd packages/tests/default_dotenv && cargo test --verbose -- --nocapture
+	cd packages/tests/include_with_dotenv && cargo test --verbose -- --nocapture
 
 .PHONY: clean-all
 clean-all: ## Clean up all packages.
