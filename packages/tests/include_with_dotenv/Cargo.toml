@@ -1,0 +1,11 @@
+[package]
+name = "include-with-dotenv-test"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+portalenv = { path = "../../index" }
+default-dotenv-test = { path = "../default_dotenv" }
+
+[dev-dependencies]

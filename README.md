@@ -33,10 +33,11 @@ Embed environment configuration directly in your Rust code with dedicated derive
 - Native Rust expressions as configuration values.
 - Environment variable references.
 - Value switching by environment name.
-- Array, map, and tuple literal syntax.
 - Nested object configuration.
+- Inclusion of other env configurations.
 - Type-safe implicit conversion from string values, including custom value types.
 - Dotenv file support via `dotenvy`.
+- Array, map, and tuple literal syntax. Available in dotenv files as well.
 
 ## Installation
 
