@@ -1,5 +1,6 @@
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Error type for environment variable and configuration handling.
 #[derive(Debug)]
 pub enum Error {
     EnvValError(std::env::VarError),

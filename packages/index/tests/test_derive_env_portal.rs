@@ -15,6 +15,24 @@ fn test_derive_env_portal_for_empty() {
     pub struct EnvConfig {}
 
     let _ = EnvConfig::from_env().unwrap();
+
+    struct Hoge {
+        aaa: String,
+        bbb: String,
+    }
+
+    let h1 = Hoge {
+        aaa: "aaa-value".to_string(),
+        bbb: "bbb-value".to_string(),
+    };
+    let h2 = Hoge {
+        aaa: "aaa-value".to_string(),
+        bbb: "bbb-value".to_string(),
+    };
+    Hoge {
+        aaa: "aaa-value".to_string(),
+        ..h1
+    };
 }
 
 #[test]
@@ -360,4 +378,42 @@ fn test_derive_env_portal_with_env_include() {
     let config = EnvConfig::from_env().unwrap();
     assert_eq!(config.hoge, "test-hoge".to_string());
     assert_eq!(config.other.foo, "test-foo".to_string());
+}
+
+#[test]
+fn test_derive_env_portal_with_env_include_and_override_fields() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        mapping = {
+            hoge: "test-hoge",
+            other: env_include<OtherEnvConfig> {
+                foo: "override-foo",
+                baz: "override-baz",
+            }
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+        pub other: OtherEnvConfig,
+    }
+
+    #[derive(EnvPortal)]
+    #[env_portal(
+        mapping = {
+            foo: "test-foo",
+            bar: "test-bar",
+            baz: "test-baz",
+        }
+    )]
+    pub struct OtherEnvConfig {
+        pub foo: String,
+        pub bar: String,
+        pub baz: String,
+    }
+
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "test-hoge".to_string());
+    assert_eq!(config.other.foo, "override-foo".to_string());
+    assert_eq!(config.other.bar, "test-bar".to_string());
+    assert_eq!(config.other.baz, "override-baz".to_string());
 }

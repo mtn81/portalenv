@@ -1,5 +1,129 @@
 macro_rules! define {
     () => {
+        /// Derive macro that implements the [`EnvPortal`] trait for a struct.
+        ///
+        /// It generates [`EnvPortal::from_env_with`], which builds an
+        /// instance of the struct field by field according to the `mapping`
+        /// given in the `#[env_portal(...)]` attribute, as well as
+        /// [`EnvPortal::env_name_key`] and [`EnvPortal::dotenv_file`], which
+        /// control which `.env` file(s) [`EnvPortal::from_env`] loads before
+        /// construction.
+        ///
+        /// Can only be derived for structs with named fields.
+        ///
+        /// # Attribute arguments
+        ///
+        /// All arguments are optional and are passed as
+        /// `#[env_portal(key = value, ...)]`:
+        ///
+        /// - `mapping = { field: value, ... }` — describes how each field of
+        ///   the struct is produced. See "Mapping value syntax" below. Every
+        ///   field of the struct must appear in the mapping (the generated
+        ///   code is a plain struct literal), otherwise it fails to compile
+        ///   with a "missing field" error; omitting `mapping` entirely only
+        ///   works for a struct with no fields.
+        /// - `dotenv_file = "path"` — path to the `.env` file to load,
+        ///   relative to the current working directory. Defaults to
+        ///   `"<CARGO_MANIFEST_DIR>/.env"`. If `env_name_key` resolves to a
+        ///   value (say `"local"`), a second file named `"path.local"` is
+        ///   loaded afterwards (when present), overriding keys from the base
+        ///   file.
+        /// - `env_name_key = "ENV_VAR_NAME"` — name of the environment
+        ///   variable that identifies the current environment (e.g.
+        ///   `"APP_ENV"`). Its value is required by `env_match` /
+        ///   `env_partial_match` mapping values and by the environment-specific
+        ///   `.env` file described above. When omitted, both `env_match` and
+        ///   `env_partial_match` fields always fail with
+        ///   [`Error::MissingEnvName`], since no environment value is
+        ///   available to match against.
+        ///
+        /// # Mapping value syntax
+        ///
+        /// Each `field: value` entry in `mapping` accepts one of the
+        /// following forms for `value`:
+        ///
+        /// - A literal (string, integer, float, bool, array or tuple), e.g.
+        ///   `foo: "10"`, `foo: 10`, `foo: true`, `foo: [1, 2, 3]`,
+        ///   `foo: (1, "a")`. The literal is rendered to its string form and
+        ///   passed through [`EnvStrValue::convert`], so both a raw literal
+        ///   (`10`) and its string equivalent (`"10"`) parse to the same
+        ///   value. A brace block like `{ a: 1, b: 2 }` is treated the same
+        ///   way and is typically used to build map-like fields
+        ///   (`HashMap<K, V>`).
+        /// - `env_var::IDENT` — reads the environment variable named `IDENT`
+        ///   at runtime with `std::env::var` and converts it with
+        ///   [`EnvStrValue::convert`]. Fails with the underlying [`VarError`]
+        ///   if the variable is not set.
+        /// - `None` — the literal Rust value `None`, useful for `Option<T>`
+        ///   fields that should default to empty.
+        /// - Any other Rust expression, e.g. `foo: 1 + 2`,
+        ///   `foo: MyEnum::Variant`, `foo: if cond { a } else { b }` — spliced
+        ///   verbatim into the generated code.
+        /// - `Type { field: value, ... }` — builds a nested struct inline by
+        ///   recursively applying this same mapping syntax; `Type` must not
+        ///   itself derive [`EnvPortal`] for this form (it is constructed
+        ///   directly, not via `from_env`).
+        /// - `env_include<Type>` — delegates entirely to `Type::from_env()`
+        ///   (where `Type` derives [`EnvPortal`]), embedding its result as
+        ///   this field's value. Useful for composing independently-configured
+        ///   sub-configs.
+        /// - `env_include<Type> { field: value, ... }` — same as above, but
+        ///   the listed fields override the corresponding fields of the
+        ///   value returned by `Type::from_env()` (via struct update syntax),
+        ///   while every other field of `Type` keeps the value produced by
+        ///   its own `from_env`.
+        /// - `env_match { pat => value, ... }` — matches the current
+        ///   environment name (from `env_name_key`, required — otherwise
+        ///   fails with [`Error::MissingEnvName`]) against string patterns
+        ///   (e.g. `"local"`, `"stg" | "prd"`) and evaluates the mapping
+        ///   value of the first matching arm (recursively, so a match arm's
+        ///   value can itself be any of the forms described here, including
+        ///   a nested `Type { ... }`). Fails with [`Error::InvalidEnvName`]
+        ///   if no arm matches.
+        /// - `env_partial_match { pat => value, ... }` — like `env_match`,
+        ///   but the field type must be `Option<T>`: a matching arm produces
+        ///   `Some(value)`, and no arm matching produces `None` instead of an
+        ///   error.
+        ///
+        /// # Example
+        ///
+        /// ```ignore
+        /// #[derive(EnvPortal)]
+        /// #[env_portal(
+        ///     env_name_key = "APP_ENV",
+        ///     dotenv_file = ".env",
+        ///     mapping = {
+        ///         app_name: "Demo",
+        ///         server: ServerConfig {
+        ///             host: env_var::SERVER_HOST,
+        ///             port: env_var::SERVER_PORT,
+        ///         },
+        ///         mail_to: env_match {
+        ///             "local" | "stg" => "test@example.com",
+        ///             "prd" => "prod@example.com",
+        ///         },
+        ///         extra: env_include<ExtraConfig> {
+        ///             overridden_field: "custom-value",
+        ///         },
+        ///     }
+        /// )]
+        /// pub struct EnvConfig {
+        ///     pub app_name: String,
+        ///     pub server: ServerConfig,
+        ///     pub mail_to: String,
+        ///     pub extra: ExtraConfig,
+        /// }
+        /// ```
+        ///
+        /// [`EnvPortal`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_portal/trait.EnvPortal.html
+        /// [`EnvPortal::from_env_with`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_portal/trait.EnvPortal.html#tymethod.from_env_with
+        /// [`EnvPortal::env_name_key`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_portal/trait.EnvPortal.html#tymethod.env_name_key
+        /// [`EnvPortal::dotenv_file`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_portal/trait.EnvPortal.html#tymethod.dotenv_file
+        /// [`EnvPortal::from_env`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_portal/trait.EnvPortal.html#method.from_env
+        /// [`EnvStrValue::convert`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_str_value/struct.EnvStrValue.html#method.convert
+        /// [`VarError`]: https://doc.rust-lang.org/std/env/enum.VarError.html
+        /// [`Error::MissingEnvName`]: https://docs.rs/portalenv-core/latest/portalenv_core/error/enum.Error.html#variant.MissingEnvName
+        /// [`Error::InvalidEnvName`]: https://docs.rs/portalenv-core/latest/portalenv_core/error/enum.Error.html#variant.InvalidEnvName
         #[proc_macro_error]
         #[proc_macro_derive(EnvPortal, attributes(env_portal))]
         pub fn derive_env_portal(input: TokenStream) -> TokenStream {
@@ -111,10 +235,20 @@ fn make_constructor(
             }
             MappingValue::Nested { ty, mapping } => make_constructor(Some(name), Some(ty), mapping),
 
-            MappingValue::EnvInclude(ty) => {
-                quote!(
-                    #ty::from_env()?
-                )
+            MappingValue::EnvInclude { ty, mapping } => {
+                if let Some(mapping) = mapping {
+                    let field_constructs = make_field_constructs(mapping, Some(name));
+                    quote!(
+                        #ty {
+                            #(#field_constructs),*
+                            , ..(#ty::from_env()?)
+                        }
+                    )
+                } else {
+                    quote!(
+                        #ty::from_env()?
+                    )
+                }
             }
             MappingValue::EnvMatch { arms, partial } => {
                 let arms = arms.iter().map(|(pat, value)| {
@@ -148,19 +282,25 @@ fn make_constructor(
         }
     }
 
-    let field_constructs = mapping.fields.iter().map(|(f_ident, value)| {
-        let field_name = if let Some(parent) = parent_name {
-            format!("{}.{}", parent, f_ident)
-        } else {
-            f_ident.to_string()
-        };
-        let value = make_mapping_value(&field_name, value);
-        quote!(
-            #f_ident: #value
-        )
-    });
+    fn make_field_constructs(
+        mapping: &Mapping,
+        parent_name: Option<&str>,
+    ) -> impl Iterator<Item = TokenStream2> {
+        mapping.fields.iter().map(move |(f_ident, value)| {
+            let field_name = if let Some(parent) = parent_name {
+                format!("{}.{}", parent, f_ident)
+            } else {
+                f_ident.to_string()
+            };
+            let value = make_mapping_value(&field_name, value);
+            quote!(
+                #f_ident: #value
+            )
+        })
+    }
 
     let type_ = type_.map(|t| quote!(#t)).unwrap_or_else(|| quote!(Self));
+    let field_constructs = make_field_constructs(mapping, parent_name);
 
     quote!(
         #type_ {
@@ -250,7 +390,10 @@ enum MappingValue {
         arms: Vec<(Pat, MappingValue)>,
         partial: bool,
     },
-    EnvInclude(Type),
+    EnvInclude {
+        ty: Type,
+        mapping: Option<Mapping>,
+    },
 }
 
 impl Parse for MappingValue {
@@ -295,7 +438,14 @@ impl Parse for MappingValue {
             input.parse::<token::Lt>()?;
             let ty = input.parse()?;
             input.parse::<token::Gt>()?;
-            Ok(MappingValue::EnvInclude(ty))
+
+            let mapping = if input.peek(token::Brace) {
+                Some(input.parse()?)
+            } else {
+                None
+            };
+
+            Ok(MappingValue::EnvInclude { ty, mapping })
         } else if input.peek(Ident) && input.peek2(token::Brace) {
             let ty = input.parse()?;
             let mapping = input.parse()?;

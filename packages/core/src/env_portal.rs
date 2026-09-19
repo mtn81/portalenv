@@ -2,6 +2,7 @@ use std::path::Path;
 
 use crate::error::*;
 
+/// A trait for types that can be constructed from configuration values and environment variables (optionally loaded from a .env file).
 pub trait EnvPortal {
     fn env_name_key() -> Option<&'static str>;
     fn dotenv_file() -> Option<&'static str>;
@@ -12,7 +13,7 @@ pub trait EnvPortal {
     {
         let env = Self::env_name_key().map(std::env::var).transpose()?;
 
-        // load from .env file if it exists
+        // load the .env file if it exists
         if let Some(file) = Self::dotenv_file() {
             if Path::new(file).exists() {
                 dotenvy::from_filename_override(file)?;
