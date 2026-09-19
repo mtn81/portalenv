@@ -111,10 +111,20 @@ fn make_constructor(
             }
             MappingValue::Nested { ty, mapping } => make_constructor(Some(name), Some(ty), mapping),
 
-            MappingValue::EnvInclude(ty) => {
-                quote!(
-                    #ty::from_env()?
-                )
+            MappingValue::EnvInclude { ty, mapping } => {
+                if let Some(mapping) = mapping {
+                    let field_constructs = make_field_constructs(mapping, Some(name));
+                    quote!(
+                        #ty {
+                            #(#field_constructs),*
+                            , ..(#ty::from_env()?)
+                        }
+                    )
+                } else {
+                    quote!(
+                        #ty::from_env()?
+                    )
+                }
             }
             MappingValue::EnvMatch { arms, partial } => {
                 let arms = arms.iter().map(|(pat, value)| {
@@ -148,19 +158,25 @@ fn make_constructor(
         }
     }
 
-    let field_constructs = mapping.fields.iter().map(|(f_ident, value)| {
-        let field_name = if let Some(parent) = parent_name {
-            format!("{}.{}", parent, f_ident)
-        } else {
-            f_ident.to_string()
-        };
-        let value = make_mapping_value(&field_name, value);
-        quote!(
-            #f_ident: #value
-        )
-    });
+    fn make_field_constructs(
+        mapping: &Mapping,
+        parent_name: Option<&str>,
+    ) -> impl Iterator<Item = TokenStream2> {
+        mapping.fields.iter().map(move |(f_ident, value)| {
+            let field_name = if let Some(parent) = parent_name {
+                format!("{}.{}", parent, f_ident)
+            } else {
+                f_ident.to_string()
+            };
+            let value = make_mapping_value(&field_name, value);
+            quote!(
+                #f_ident: #value
+            )
+        })
+    }
 
     let type_ = type_.map(|t| quote!(#t)).unwrap_or_else(|| quote!(Self));
+    let field_constructs = make_field_constructs(mapping, parent_name);
 
     quote!(
         #type_ {
@@ -250,7 +266,10 @@ enum MappingValue {
         arms: Vec<(Pat, MappingValue)>,
         partial: bool,
     },
-    EnvInclude(Type),
+    EnvInclude {
+        ty: Type,
+        mapping: Option<Mapping>,
+    },
 }
 
 impl Parse for MappingValue {
@@ -295,7 +314,14 @@ impl Parse for MappingValue {
             input.parse::<token::Lt>()?;
             let ty = input.parse()?;
             input.parse::<token::Gt>()?;
-            Ok(MappingValue::EnvInclude(ty))
+
+            let mapping = if input.peek(token::Brace) {
+                Some(input.parse()?)
+            } else {
+                None
+            };
+
+            Ok(MappingValue::EnvInclude { ty, mapping })
         } else if input.peek(Ident) && input.peek2(token::Brace) {
             let ty = input.parse()?;
             let mapping = input.parse()?;
