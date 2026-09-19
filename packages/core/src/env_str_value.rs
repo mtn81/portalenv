@@ -11,6 +11,7 @@ use crate::error::{Error, Result};
 
 // FromEnvStrValue
 
+/// A trait for types that can be constructed from [`EnvStrValue`].
 pub trait FromEnvStrValue: Sized {
     fn from_env_str(s: EnvStrValue) -> Result<Self>;
 
@@ -139,6 +140,7 @@ def_from_env_str_value_for_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
 
 // EnvStrValue
 
+/// Represents a value obtained from a configuration or an environment variable, potentially normalized.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnvStrValue {
     name: &'static str,

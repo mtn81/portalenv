@@ -1,4 +1,4 @@
-//! Defines core functionalities.
+//! Defines core functionality.
 pub mod error;
 pub use error::*;
 
