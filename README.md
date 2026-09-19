@@ -37,7 +37,7 @@ Embed environment configuration directly in your Rust code with dedicated derive
 - Inclusion of other env configurations.
 - Type-safe implicit conversion from string values, including custom value types.
 - Dotenv file support via `dotenvy`.
-- Array, map, and tuple literal syntax. Available in dotenv files as well.
+- Array, map, and tuple literal syntax and these are also available in dotenv files.
 
 ## Installation
 
