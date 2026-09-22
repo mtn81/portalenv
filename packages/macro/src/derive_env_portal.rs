@@ -236,17 +236,17 @@ fn make_constructor(
             MappingValue::Nested { ty, mapping } => make_constructor(Some(name), Some(ty), mapping),
 
             MappingValue::EnvInclude { ty, mapping } => {
-                if let Some(mapping) = mapping {
+                if mapping.fields.is_empty() {
+                    quote!(
+                        #ty::from_env()?
+                    )
+                } else {
                     let field_constructs = make_field_constructs(mapping, Some(name));
                     quote!(
                         #ty {
                             #(#field_constructs),*
                             , ..(#ty::from_env()?)
                         }
-                    )
-                } else {
-                    quote!(
-                        #ty::from_env()?
                     )
                 }
             }
@@ -392,7 +392,7 @@ enum MappingValue {
     },
     EnvInclude {
         ty: Type,
-        mapping: Option<Mapping>,
+        mapping: Mapping,
     },
 }
 
@@ -440,9 +440,9 @@ impl Parse for MappingValue {
             input.parse::<token::Gt>()?;
 
             let mapping = if input.peek(token::Brace) {
-                Some(input.parse()?)
+                input.parse()?
             } else {
-                None
+                Mapping::default()
             };
 
             Ok(MappingValue::EnvInclude { ty, mapping })

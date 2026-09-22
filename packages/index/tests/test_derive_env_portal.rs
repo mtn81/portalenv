@@ -357,7 +357,7 @@ fn test_derive_env_portal_with_env_include() {
     #[env_portal(
         mapping = {
             hoge: "test-hoge",
-            other: env_include<OtherEnvConfig>
+            other: env_include<OtherEnvConfig> {}
         }
     )]
     pub struct EnvConfig {
