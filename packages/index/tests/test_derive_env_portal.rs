@@ -327,6 +327,44 @@ fn test_derive_env_portal_with_env_partial_match() {
 }
 
 #[test]
+#[serial]
+fn test_derive_env_portal_with_env_match_with_env_var() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "TEST_ENV1",
+        dotenv_file = "tests/.env",
+        mapping = {
+            hoge: env_match {
+                "local" => "hoge-local-value",
+                _       => env_var::ENV_MATCH_TEST_HOGE,
+            },
+            foo: env_partial_match {
+                "local" => "foo-local-value",
+                "stg"   => env_var::ENV_MATCH_TEST_FOO,
+            },
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+        pub foo: Option<String>,
+    }
+
+    unsafe {
+        std::env::set_var("TEST_ENV1", "local");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-local-value");
+    assert_eq!(config.foo, Some("foo-local-value".to_string()));
+
+    unsafe {
+        std::env::set_var("TEST_ENV1", "stg");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-env-match-value");
+    assert_eq!(config.foo, Some("foo-env-match-value".to_string()));
+}
+
+#[test]
 fn test_derive_env_portal_with_custom_value_type() {
     #[derive(EnvPortal)]
     #[env_portal(
