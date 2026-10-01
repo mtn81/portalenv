@@ -11,18 +11,21 @@ pub trait EnvPortal {
     where
         Self: Sized,
     {
-        let env = Self::env_name_key().map(std::env::var).transpose()?;
-
         // load the .env file if it exists
         if let Some(file) = Self::dotenv_file() {
             if Path::new(file).exists() {
                 dotenvy::from_filename_override(file)?;
             }
-            if let Some(ref env) = env {
-                let file = &format!("{file}.{env}");
-                if Path::new(file).exists() {
-                    dotenvy::from_filename_override(file)?;
-                }
+        }
+
+        let env = Self::env_name_key().map(std::env::var).transpose()?;
+
+        if let Some(file) = Self::dotenv_file()
+            && let Some(ref env) = env
+        {
+            let file = &format!("{file}.{env}");
+            if Path::new(file).exists() {
+                dotenvy::from_filename_override(file)?;
             }
         }
 
