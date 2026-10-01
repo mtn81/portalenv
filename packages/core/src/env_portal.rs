@@ -13,9 +13,10 @@ pub trait EnvPortal {
     {
         // load the .env file if it exists
         if let Some(file) = Self::dotenv_file()
-            && Path::new(file).exists() {
-                dotenvy::from_filename_override(file)?;
-            }
+            && Path::new(file).exists()
+        {
+            dotenvy::from_filename_override(file)?;
+        }
 
         let env = Self::env_name_key().map(std::env::var).transpose()?;
 
