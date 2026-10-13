@@ -172,6 +172,17 @@ impl EnvStrValue {
         }
     }
 
+    /// Reads the environment variable `var` as the value of the field `name`.
+    pub fn from_env_var(name: &'static str, var: &str) -> Result<Self> {
+        std::env::var(var)
+            .map(|value| Self::new(name, value))
+            .map_err(|source| Error::EnvVarError {
+                var: var.to_string(),
+                field: Some(name),
+                source,
+            })
+    }
+
     pub fn convert<T: FromEnvStrValue>(self) -> Result<T> {
         T::from_env_str(self)
     }
@@ -252,6 +263,28 @@ mod tests {
             " test "
         );
         assert_eq!(EnvStrValue::new("test", r#""a" b"#).to_string(), r#""a" b"#);
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_from_env_var() {
+        unsafe {
+            std::env::set_var("ENV_STR_VALUE_TEST_SET", " value ");
+            std::env::remove_var("ENV_STR_VALUE_TEST_NOT_SET");
+        }
+
+        assert_eq!(
+            EnvStrValue::from_env_var("test", "ENV_STR_VALUE_TEST_SET").unwrap(),
+            EnvStrValue::new("test", "value")
+        );
+        assert!(matches!(
+            EnvStrValue::from_env_var("server.port", "ENV_STR_VALUE_TEST_NOT_SET"),
+            Err(Error::EnvVarError {
+                var,
+                field: Some("server.port"),
+                source: std::env::VarError::NotPresent,
+            }) if var == "ENV_STR_VALUE_TEST_NOT_SET"
+        ));
     }
 
     #[test]

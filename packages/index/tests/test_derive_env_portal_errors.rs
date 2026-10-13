@@ -23,10 +23,49 @@ fn test_env_var_not_set() {
     unsafe {
         std::env::remove_var("ERROR_TEST_NOT_SET");
     }
+    let err = EnvConfig::from_env().err().unwrap();
+    assert!(matches!(
+        &err,
+        Error::EnvVarError {
+            var,
+            field: Some("hoge"),
+            source: std::env::VarError::NotPresent,
+        } if var == "ERROR_TEST_NOT_SET"
+    ));
+    assert_eq!(
+        err.to_string(),
+        "environment variable `ERROR_TEST_NOT_SET` not found (field `hoge`)"
+    );
+}
+
+#[test]
+#[serial]
+fn test_nested_env_var_not_set() {
+    #[derive(EnvPortal)]
+    #[env_portal(mapping = {
+        server: ServerConfig {
+            port: env_var::ERROR_TEST_NESTED_NOT_SET,
+        },
+    })]
+    pub struct EnvConfig {
+        pub server: ServerConfig,
+    }
+
+    pub struct ServerConfig {
+        pub port: u16,
+    }
+
+    unsafe {
+        std::env::remove_var("ERROR_TEST_NESTED_NOT_SET");
+    }
     let result = EnvConfig::from_env();
     assert!(matches!(
         result,
-        Err(Error::EnvValError(std::env::VarError::NotPresent))
+        Err(Error::EnvVarError {
+            var,
+            field: Some("server.port"),
+            source: std::env::VarError::NotPresent,
+        }) if var == "ERROR_TEST_NESTED_NOT_SET"
     ));
 }
 
@@ -99,11 +138,19 @@ fn test_env_name_key_not_set() {
     unsafe {
         std::env::remove_var("ERROR_TEST_ENV_NAME");
     }
-    let result = EnvConfig::from_env();
+    let err = EnvConfig::from_env().err().unwrap();
     assert!(matches!(
-        result,
-        Err(Error::EnvValError(std::env::VarError::NotPresent))
+        &err,
+        Error::EnvVarError {
+            var,
+            field: None,
+            source: std::env::VarError::NotPresent,
+        } if var == "ERROR_TEST_ENV_NAME"
     ));
+    assert_eq!(
+        err.to_string(),
+        "environment variable `ERROR_TEST_ENV_NAME` not found"
+    );
 }
 
 #[test]
@@ -131,9 +178,14 @@ fn test_env_include_propagates_error() {
         std::env::remove_var("ERROR_TEST_INCLUDED_NOT_SET");
     }
     let result = EnvConfig::from_env();
+    // The path is relative to the included type, since it is built by its own `from_env`.
     assert!(matches!(
         result,
-        Err(Error::EnvValError(std::env::VarError::NotPresent))
+        Err(Error::EnvVarError {
+            var,
+            field: Some("foo"),
+            source: std::env::VarError::NotPresent,
+        }) if var == "ERROR_TEST_INCLUDED_NOT_SET"
     ));
 }
 

@@ -163,7 +163,9 @@ pub struct AppConfig {
 }
 ```
 
-The variable is required: if it is not set, `from_env` returns an error.
+The variable is required: if it is not set, `from_env` returns an
+[`EnvVarError`](crate::docs::errors#envvarerror) naming the variable and the
+field.
 Variables defined in a `.env` file are available here as well, as described in
 [Getting started](crate::docs::getting_started#using-a-env-file).
 

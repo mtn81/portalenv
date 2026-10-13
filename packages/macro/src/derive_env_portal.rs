@@ -55,8 +55,9 @@ macro_rules! define {
         ///   to build map-like fields (`HashMap<K, V>`).
         /// - `env_var::IDENT` — reads the environment variable named `IDENT`
         ///   at runtime with `std::env::var` and converts it with
-        ///   [`EnvStrValue::convert`]. Fails with the underlying [`VarError`]
-        ///   if the variable is not set.
+        ///   [`EnvStrValue::convert`]. Fails with [`Error::EnvVarError`],
+        ///   carrying the variable name and the field path, if the variable
+        ///   is not set or is not valid unicode.
         /// - `None` — the literal Rust value `None`, useful for `Option<T>`
         ///   fields that should default to empty.
         /// - Any other Rust expression, including integer, float and bool
@@ -127,7 +128,7 @@ macro_rules! define {
         /// [`EnvPortal::dotenv_file`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_portal/trait.EnvPortal.html#tymethod.dotenv_file
         /// [`EnvPortal::from_env`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_portal/trait.EnvPortal.html#method.from_env
         /// [`EnvStrValue::convert`]: https://docs.rs/portalenv-core/latest/portalenv_core/env_str_value/struct.EnvStrValue.html#method.convert
-        /// [`VarError`]: https://doc.rust-lang.org/std/env/enum.VarError.html
+        /// [`Error::EnvVarError`]: https://docs.rs/portalenv-core/latest/portalenv_core/error/enum.Error.html#variant.EnvVarError
         /// [`Error::MissingEnvName`]: https://docs.rs/portalenv-core/latest/portalenv_core/error/enum.Error.html#variant.MissingEnvName
         /// [`Error::InvalidEnvName`]: https://docs.rs/portalenv-core/latest/portalenv_core/error/enum.Error.html#variant.InvalidEnvName
         #[proc_macro_error]
@@ -246,7 +247,7 @@ fn make_constructor(
             MappingValue::EnvVar(var) => {
                 let var_name = var.to_string();
                 quote!(
-                    portalenv::EnvStrValue::new(#name, std::env::var(#var_name)?).convert()?
+                    portalenv::EnvStrValue::from_env_var(#name, #var_name)?.convert()?
                 )
             }
             MappingValue::Expr(expr) => {

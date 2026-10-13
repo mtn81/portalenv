@@ -35,17 +35,21 @@ fn main() {
 `env_var::NAME` requires the variable to be set. For a variable that may be
 omitted, write a small helper and call it as a
 [Rust expression](crate::docs::mapping#rust-expressions). The `?` operator can
-be used in mapping expressions, and an [`EnvStrValue`](crate::EnvStrValue)
-gives the same conversion as `env_var`:
+be used in mapping expressions, and
+[`EnvStrValue::from_env_var`](crate::EnvStrValue::from_env_var) reads and
+converts a variable the same way as `env_var`:
 
 ```rust
 use portalenv::*;
 
 fn env_or<T: FromEnvStrValue>(name: &'static str, default: T) -> Result<T> {
-    match std::env::var(name) {
-        Ok(value) => EnvStrValue::new(name, value).convert(),
-        Err(std::env::VarError::NotPresent) => Ok(default),
-        Err(e) => Err(e.into()),
+    match EnvStrValue::from_env_var(name, name) {
+        Ok(value) => value.convert(),
+        Err(Error::EnvVarError {
+            source: std::env::VarError::NotPresent,
+            ..
+        }) => Ok(default),
+        Err(e) => Err(e),
     }
 }
 
