@@ -1,3 +1,0 @@
-//! # Tips
-//!
-//! Work in progress.

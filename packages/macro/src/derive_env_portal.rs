@@ -46,23 +46,25 @@ macro_rules! define {
         /// Each `field: value` entry in `mapping` accepts one of the
         /// following forms for `value`:
         ///
-        /// - A literal (string, integer, float, bool, array or tuple), e.g.
-        ///   `foo: "10"`, `foo: 10`, `foo: true`, `foo: [1, 2, 3]`,
-        ///   `foo: (1, "a")`. The literal is rendered to its string form and
-        ///   passed through [`EnvStrValue::convert`], so both a raw literal
-        ///   (`10`) and its string equivalent (`"10"`) parse to the same
-        ///   value. A brace block like `{ a: 1, b: 2 }` is treated the same
-        ///   way and is typically used to build map-like fields
-        ///   (`HashMap<K, V>`).
+        /// - A string, array or tuple literal, e.g. `foo: "10"`,
+        ///   `foo: [1, 2, 3]`, `foo: (1, "a")`. The literal is rendered to its
+        ///   string form and passed through [`EnvStrValue::convert`], the same
+        ///   conversion applied to environment variables, so `"10"` parses
+        ///   into any numeric field type. A brace block like
+        ///   `{ a: 1, b: 2 }` is treated the same way and is typically used
+        ///   to build map-like fields (`HashMap<K, V>`).
         /// - `env_var::IDENT` — reads the environment variable named `IDENT`
         ///   at runtime with `std::env::var` and converts it with
         ///   [`EnvStrValue::convert`]. Fails with the underlying [`VarError`]
         ///   if the variable is not set.
         /// - `None` — the literal Rust value `None`, useful for `Option<T>`
         ///   fields that should default to empty.
-        /// - Any other Rust expression, e.g. `foo: 1 + 2`,
+        /// - Any other Rust expression, including integer, float and bool
+        ///   literals, e.g. `foo: 10`, `foo: true`, `foo: 1 + 2`,
         ///   `foo: MyEnum::Variant`, `foo: if cond { a } else { b }` — spliced
-        ///   verbatim into the generated code.
+        ///   verbatim into the generated code without conversion, so it must
+        ///   already have the field type (`foo: 10` does not compile for a
+        ///   `String` field).
         /// - `Type { field: value, ... }` — builds a nested struct inline by
         ///   recursively applying this same mapping syntax; `Type` must not
         ///   itself derive [`EnvPortal`] for this form (it is constructed
