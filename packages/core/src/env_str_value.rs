@@ -122,7 +122,6 @@ macro_rules! def_from_env_str_value_for_tuple {
                         )?,)+
                     );
 
-                    // Reject extra elements instead of silently ignoring them
                     if elems.next().is_some() {
                         return Err(Self::conversion_error(s));
                     }
@@ -266,7 +265,6 @@ mod tests {
             EnvStrValue::new("test", r#" " test " "#).to_string(),
             " test "
         );
-        // Text after the closing quote must not be dropped
         assert_eq!(EnvStrValue::new("test", r#""a" b"#).to_string(), r#""a" b"#);
     }
 

@@ -1,4 +1,3 @@
-// These imports are only used by the test below
 #![allow(unused_imports)]
 
 use portalenv::*;
