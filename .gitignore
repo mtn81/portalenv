@@ -3,3 +3,4 @@ Cargo.lock
 .claude/settings.local.json
 .claude/agents/
 .vscode/
+.claude/worktrees/
