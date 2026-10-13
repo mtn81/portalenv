@@ -8,12 +8,10 @@ repository.workspace = true
 description = "Core functionalities for portalenv."
 
 [dependencies]
-async-trait = "0.1"
 dotenvy = "0.15.7"
 regex = "1.13.1"
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full"] }
 serial_test = "4.0"
 
 [features]
