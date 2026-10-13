@@ -459,6 +459,20 @@ fn test_derive_env_portal_with_env_include_and_override_fields() {
 }
 
 #[test]
+fn test_derive_env_portal_with_none() {
+    #[derive(EnvPortal)]
+    #[env_portal(mapping = {
+        hoge: None,
+    })]
+    pub struct EnvConfig {
+        pub hoge: Option<String>,
+    }
+
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, None);
+}
+
+#[test]
 #[serial]
 fn test_derive_env_portal_with_nested_env_match() {
     #[derive(EnvPortal)]
@@ -515,4 +529,87 @@ fn test_derive_env_portal_with_nested_env_match() {
     }
     let config = EnvConfig::from_env().unwrap();
     assert_eq!(config.hoge, "hoge-other-value");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_missing_dotenv_file() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "TEST_ENV4",
+        dotenv_file = "tests/not-found.env",
+        mapping = {
+            hoge: "hoge-value",
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+    }
+
+    unsafe {
+        std::env::set_var("TEST_ENV4", "local");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-value");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_without_env_specific_dotenv_file() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "TEST_ENV4",
+        dotenv_file = "tests/.env",
+        mapping = {
+            bar: env_var::ENV_MATCH_TEST_BAR,
+        }
+    )]
+    pub struct EnvConfig {
+        pub bar: String,
+    }
+
+    unsafe {
+        std::env::set_var("TEST_ENV4", "prd");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.bar, "bar-env-value");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_broken_dotenv_file() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        dotenv_file = "tests/broken.env",
+        mapping = {
+            hoge: "hoge-value",
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+    }
+
+    let result = EnvConfig::from_env();
+    assert!(matches!(result, Err(Error::DotEnvyError(_))));
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_dotenv_overrides_process_env() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        dotenv_file = "tests/override.env",
+        mapping = {
+            hoge: env_var::OVERRIDE_TEST_VALUE,
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+    }
+
+    unsafe {
+        std::env::set_var("OVERRIDE_TEST_VALUE", "from-process");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "from-dotenv");
 }
