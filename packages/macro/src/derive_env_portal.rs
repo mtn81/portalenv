@@ -323,23 +323,21 @@ impl Parse for EnvPortalAttrArgs {
         let mut env_name_key = None;
 
         while !input.is_empty() {
-            if input.peek(kw::mapping) {
+            let lookahead = input.lookahead1();
+            if lookahead.peek(kw::mapping) {
                 input.parse::<kw::mapping>()?;
                 input.parse::<Token![=]>()?;
                 mapping = input.parse()?;
-            } else if input.peek(kw::dotenv_file) {
+            } else if lookahead.peek(kw::dotenv_file) {
                 input.parse::<kw::dotenv_file>()?;
                 input.parse::<Token![=]>()?;
                 dotenv_file = Some(input.parse()?);
-            } else if input.peek(kw::env_name_key) {
+            } else if lookahead.peek(kw::env_name_key) {
                 input.parse::<kw::env_name_key>()?;
                 input.parse::<Token![=]>()?;
                 env_name_key = Some(input.parse()?);
             } else {
-                // Without this, an unknown key is never consumed and the loop never ends
-                return Err(input.error(
-                    "unknown argument, expected one of `mapping`, `dotenv_file`, `env_name_key`",
-                ));
+                return Err(lookahead.error());
             }
             input.parse::<Option<Token![,]>>()?;
         }

@@ -1,5 +1,0 @@
-error: failed to parse 'env_portal' attribute: unknown argument, expected one of `mapping`, `dotenv_file`, `env_name_key`
- --> tests/ui/unknown_attr_key.rs:4:1
-  |
-4 | #[env_portal(dotenv_fle = ".env")]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
