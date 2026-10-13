@@ -34,24 +34,35 @@ with crates such as `anyhow`.
 
 | Variant | Cause |
 |---|---|
-| [`EnvValError`](crate::Error::EnvValError) | An environment variable is not set |
+| [`EnvVarError`](crate::Error::EnvVarError) | An environment variable is not set |
 | [`DotEnvyError`](crate::Error::DotEnvyError) | A `.env` file cannot be parsed |
 | [`ValConversionError`](crate::Error::ValConversionError) | A value cannot be converted into the field type |
 | [`MissingEnvName`](crate::Error::MissingEnvName) | `env_match` is used without `env_name_key` |
 | [`InvalidEnvName`](crate::Error::InvalidEnvName) | No `env_match` arm matches the environment name |
 
-### `EnvValError`
+### `EnvVarError`
 
 ```text
-environment variable not found
+environment variable `SERVER_PORT` not found (field `server.port`)
 ```
 
 A variable read with `env_var::NAME`, or the variable named by
 `env_name_key`, is set neither in the process environment nor in the loaded
-`.env` files. The message does not include the variable name, so check the
-`env_var` entries of the mapping and the `env_name_key`.
+`.env` files. The message shows the variable name and the field it is mapped
+to, with the path of nested structs. The field is omitted for the variable
+named by `env_name_key`. For a field of a struct composed with
+`env_include<Type>`, the path is relative to `Type`, since `Type::from_env`
+builds that struct on its own.
 
-It is also returned when a variable contains invalid Unicode.
+It is also returned when a variable contains invalid Unicode:
+
+```text
+environment variable `SERVER_PORT` is not valid unicode: "\xFF" (field `server.port`)
+```
+
+The variable name, the field path and the underlying
+[`VarError`](std::env::VarError) are available as the `var`, `field` and
+`source` fields of the variant.
 
 ### `DotEnvyError`
 

@@ -41,6 +41,12 @@ pub trait EnvPortal {
 }
 
 fn env_name(key: &str, base_file: Option<&str>) -> Result<String> {
+    let error = |source| Error::EnvVarError {
+        var: key.to_string(),
+        field: None,
+        source,
+    };
+
     match std::env::var(key) {
         Err(std::env::VarError::NotPresent) => {
             if let Some(file) = base_file {
@@ -51,9 +57,9 @@ fn env_name(key: &str, base_file: Option<&str>) -> Result<String> {
                     }
                 }
             }
-            Err(std::env::VarError::NotPresent.into())
+            Err(error(std::env::VarError::NotPresent))
         }
-        result => Ok(result?),
+        result => result.map_err(error),
     }
 }
 
