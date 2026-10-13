@@ -27,7 +27,9 @@ macro_rules! define {
         ///   `"<CARGO_MANIFEST_DIR>/.env"`. If `env_name_key` resolves to a
         ///   value (say `"local"`), a second file named `"path.local"` is
         ///   loaded afterwards (when present), overriding keys from the base
-        ///   file.
+        ///   file. Values loaded from these files also override environment
+        ///   variables that are already set in the process. A file that does
+        ///   not exist is skipped.
         /// - `env_name_key = "ENV_VAR_NAME"` — name of the environment
         ///   variable that identifies the current environment (e.g.
         ///   `"APP_ENV"`). Its value is required by `env_match` /
