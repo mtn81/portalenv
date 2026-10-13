@@ -46,12 +46,12 @@ packages
 ## 注意事項
 
 - コミットする前に必ず `make lint` と `make test-all` を実行する (CIも同じ内容を実行する)
+- ソースコード (`.rs`、`Cargo.toml` など) のコメントは英語で書く
 - rustのバージョンが上がった場合などに、trybuildのstderrの出力がズレたらTRYBUILD=overwriteで再生成する
 - ドキュメントは、packages/index/src/docs/ 配下に配置されている。機能を変更したらドキュメントと README.md にも反映する
 - テストは環境変数と `.env*` ファイルに依存するため、環境変数を書き換えるテストには `serial_test` の `#[serial]` を付ける
-- `packages/tests/` にテストパッケージを追加したら、Makefile の `test-all` にも追記する
+- `packages/tests/` にテストパッケージを追加したら、Makefile の `test-all` にも追記し、`Cargo.toml` に空の `[workspace]` を書く (親ディレクトリのワークスペースに誤って所属しないようにするため)
 - バージョンは手動で変更しない。GitHub Release 時に CI がルート `Cargo.toml` の `#tag:release-version` 行を書き換えて crates.io に公開する
-- `.claude/worktrees/` 配下の worktree では、`packages/tests/*` が親リポジトリの `Cargo.toml` をワークスペースと誤認して `make test-all` が失敗する (環境起因)
 
 ## PRレビュー時の観点
 

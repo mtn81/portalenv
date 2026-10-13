@@ -451,7 +451,7 @@ impl Parse for MappingValue {
             let mapping = input.parse()?;
             Ok(MappingValue::Nested { ty, mapping })
         } else if input.peek(token::Brace) {
-            // { a: 1, b: 2 } のような Mapの定義
+            // Map definition such as { a: 1, b: 2 }
             let content;
             syn::braced!(content in input);
 

@@ -167,7 +167,7 @@ impl EnvStrValue {
             if let Some(c) = RE_STR.captures(&s)
                 && let (_, [s]) = c.extract()
             {
-                // "..." で囲まれた文字列はそのまま返す
+                // Return a string enclosed in "..." as is (without trimming)
                 s.to_string()
             } else {
                 s.trim().to_string()
