@@ -109,7 +109,7 @@ macro_rules! def_from_env_str_value_for_tuple {
                             }
                         });
 
-                    Ok((
+                    let tuple = (
                         $($T::from_env_str(
                             EnvStrValue::new(
                                 &s.name,
@@ -120,7 +120,14 @@ macro_rules! def_from_env_str_value_for_tuple {
                                 }
                             )
                         )?,)+
-                    ))
+                    );
+
+                    // Reject extra elements instead of silently ignoring them
+                    if elems.next().is_some() {
+                        return Err(Self::conversion_error(s));
+                    }
+
+                    Ok(tuple)
                 } else {
                     Err(Self::conversion_error(s))
                 }
@@ -372,5 +379,14 @@ mod tests {
             .convert()
             .unwrap();
         assert_eq!(r, ("a,x".to_string(), 1, true));
+    }
+
+    #[test]
+    fn test_convert_str_to_tuple_with_wrong_arity() {
+        let r: Result<(u32, u32)> = EnvStrValue::new("test", "(1, 2, 3)").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<(u32, u32)> = EnvStrValue::new("test", "(1)").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
     }
 }
