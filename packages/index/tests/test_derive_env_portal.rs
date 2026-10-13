@@ -457,3 +457,62 @@ fn test_derive_env_portal_with_env_include_and_override_fields() {
     assert_eq!(config.other.bar, "test-bar".to_string());
     assert_eq!(config.other.baz, "override-baz".to_string());
 }
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_nested_env_match() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "TEST_ENV3",
+        mapping = {
+            hoge: env_match {
+                "local" | "stg" => env_match {
+                    "local" => "hoge-local-value",
+                    _ => "hoge-staging-value"
+                },
+                _ => "hoge-other-value"
+            },
+            other: env_match {
+                "local" => env_include<OtherEnvConfig> {
+                    foo: "override-foo",
+                },
+                _ => env_include<OtherEnvConfig>
+            },
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+        pub other: OtherEnvConfig,
+    }
+
+    #[derive(EnvPortal)]
+    #[env_portal(mapping = {
+        foo: "test-foo",
+        bar: "test-bar",
+    })]
+    pub struct OtherEnvConfig {
+        pub foo: String,
+        pub bar: String,
+    }
+
+    unsafe {
+        std::env::set_var("TEST_ENV3", "local");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-local-value");
+    assert_eq!(config.other.foo, "override-foo");
+    assert_eq!(config.other.bar, "test-bar");
+
+    unsafe {
+        std::env::set_var("TEST_ENV3", "stg");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-staging-value");
+    assert_eq!(config.other.foo, "test-foo");
+
+    unsafe {
+        std::env::set_var("TEST_ENV3", "prd");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-other-value");
+}

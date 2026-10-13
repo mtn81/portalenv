@@ -283,10 +283,11 @@ fn make_constructor(
                 };
 
                 quote!({
-                    let Some(env) = env.as_ref() else {
+                    // Don't shadow `env`: nested env_match blocks read it again
+                    let Some(env_name) = env.as_ref() else {
                         return Err(portalenv::Error::MissingEnvName);
                     };
-                    match env.as_str() {
+                    match env_name.as_str() {
                         #(#arms)*
                         #fallback_arm,
                     }
