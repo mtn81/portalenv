@@ -8,8 +8,8 @@ Rust製の環境設定値管理のライブラリ
 
 ## 開発環境
 
-- 言語: Rust
-- パッケージマネージャー: Cargo
+- 言語: Rust (edition 2024, MSRV 1.85.0, toolchain は stable)
+- パッケージマネージャー: Cargo (ワークスペース構成)
 
 ## よく使うコマンド
 
@@ -37,16 +37,21 @@ make clean-all
 
 ```
 packages
-├── index    クレートのAPIを公開とドキュメント
-├── core     コアになる部品の実装
-├── macros   proc-macroの実装
+├── index    クレートのAPIを公開とドキュメント (portalenv)
+├── core     コアになる部品の実装 (portalenv-core)
+├── macro    proc-macroの実装 (portalenv-macro)
+└── tests    ワークスペース外の結合テスト用パッケージ (default_dotenv, include_with_dotenv)
 ```
 
 ## 注意事項
 
-- コミットする前に必ず `make lint` と `make test-all` を実行する
+- コミットする前に必ず `make lint` と `make test-all` を実行する (CIも同じ内容を実行する)
 - rustのバージョンが上がった場合などに、trybuildのstderrの出力がズレたらTRYBUILD=overwriteで再生成する
-- ドキュメントは、packages/index/src/docs/ 配下に配置されている。
+- ドキュメントは、packages/index/src/docs/ 配下に配置されている。機能を変更したらドキュメントと README.md にも反映する
+- テストは環境変数と `.env*` ファイルに依存するため、環境変数を書き換えるテストには `serial_test` の `#[serial]` を付ける
+- `packages/tests/` にテストパッケージを追加したら、Makefile の `test-all` にも追記する
+- バージョンは手動で変更しない。GitHub Release 時に CI がルート `Cargo.toml` の `#tag:release-version` 行を書き換えて crates.io に公開する
+- `.claude/worktrees/` 配下の worktree では、`packages/tests/*` が親リポジトリの `Cargo.toml` をワークスペースと誤認して `make test-all` が失敗する (環境起因)
 
 ## PRレビュー時の観点
 
