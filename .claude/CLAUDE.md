@@ -10,6 +10,7 @@ Rust製の環境設定値管理のライブラリ
 
 - 言語: Rust (edition 2024, MSRV 1.85.0, toolchain は stable)
 - マネージャー: Cargo (ワークスペース構成)
+- `make lint` には [cargo-machete](https://github.com/bnjbvr/cargo-machete) が必要 (`cargo install cargo-machete --locked`)
 
 ## よく使うコマンド
 
@@ -20,10 +21,10 @@ cargo build
 # フォーマット
 cargo fmt
 
-# フォーマット/リントチェック (cargo fmt --check + cargo clippy -- -D warnings)
+# フォーマット/リント/未使用依存のチェック (cargo fmt --check + cargo clippy -- -D warnings + cargo machete)
 make lint
 
-# フォーマット/リントの自動修正 (cargo fmt + cargo clippy --fix)
+# フォーマット/リント/未使用依存の自動修正 (cargo machete --fix + cargo fmt + cargo clippy --fix)
 make lint-fix
 
 # 全パッケージのテスト (ワークスペース外のテストパッケージ含む)
