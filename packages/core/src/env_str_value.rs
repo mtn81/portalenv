@@ -387,4 +387,108 @@ mod tests {
         let r: Result<(u32, u32)> = EnvStrValue::new("test", "(1)").convert();
         assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
     }
+
+    #[test]
+    fn test_convert_empty_collections() {
+        let r: Vec<u32> = EnvStrValue::new("test", "[]").convert().unwrap();
+        assert!(r.is_empty());
+
+        let r: HashSet<u32> = EnvStrValue::new("test", " [ ] ").convert().unwrap();
+        assert!(r.is_empty());
+
+        let r: HashMap<String, u32> = EnvStrValue::new("test", "{}").convert().unwrap();
+        assert!(r.is_empty());
+    }
+
+    #[test]
+    fn test_convert_collections_without_brackets() {
+        let r: Result<Vec<u32>> = EnvStrValue::new("test", "1, 2").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<HashSet<u32>> = EnvStrValue::new("test", "1, 2").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<HashMap<String, u32>> = EnvStrValue::new("test", "a: 1").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<(String, u32)> = EnvStrValue::new("test", "a, 1").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+    }
+
+    #[test]
+    fn test_convert_collections_with_invalid_element() {
+        let r: Result<Vec<u32>> = EnvStrValue::new("test", "[1, x]").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<HashMap<String, u32>> = EnvStrValue::new("test", "{a: x}").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<(String, u32)> = EnvStrValue::new("test", r#"("a", x)"#).convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+    }
+
+    #[test]
+    fn test_convert_hashmap_with_duplicate_keys() {
+        let r: HashMap<String, u32> = EnvStrValue::new("test", "{a: 1, a: 2}").convert().unwrap();
+        assert_eq!(r, HashMap::from([("a".to_string(), 2)]));
+    }
+
+    #[test]
+    fn test_convert_nested_collections_is_unsupported() {
+        let r: Result<Vec<Vec<u32>>> = EnvStrValue::new("test", "[[1, 2], [3]]").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+    }
+
+    #[test]
+    fn test_convert_primitives() {
+        assert_eq!(
+            EnvStrValue::new("t", "-128").convert::<i8>().unwrap(),
+            i8::MIN
+        );
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<i16>().unwrap(), -1);
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<i32>().unwrap(), -1);
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<i64>().unwrap(), -1);
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<i128>().unwrap(), -1);
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<isize>().unwrap(), -1);
+        assert_eq!(
+            EnvStrValue::new("t", "255").convert::<u8>().unwrap(),
+            u8::MAX
+        );
+        assert_eq!(EnvStrValue::new("t", "1").convert::<u16>().unwrap(), 1);
+        assert_eq!(EnvStrValue::new("t", "1").convert::<u64>().unwrap(), 1);
+        assert_eq!(EnvStrValue::new("t", "1").convert::<u128>().unwrap(), 1);
+        assert_eq!(EnvStrValue::new("t", "1.5").convert::<f32>().unwrap(), 1.5);
+        assert_eq!(EnvStrValue::new("t", "1.5").convert::<f64>().unwrap(), 1.5);
+        assert!(EnvStrValue::new("t", "true").convert::<bool>().unwrap());
+    }
+
+    #[test]
+    fn test_convert_primitives_out_of_range() {
+        for value in ["256", "-1"] {
+            let r: Result<u8> = EnvStrValue::new("test", value).convert();
+            assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+        }
+
+        for value in ["TRUE", "1", "yes"] {
+            let r: Result<bool> = EnvStrValue::new("test", value).convert();
+            assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+        }
+    }
+
+    #[test]
+    fn test_conversion_error_message() {
+        let err = EnvStrValue::new("PORT", "abc")
+            .convert::<u32>()
+            .unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("u32"), "{message}");
+        assert!(message.contains("abc"), "{message}");
+        assert!(message.contains("PORT"), "{message}");
+    }
+
+    #[test]
+    fn test_into_string() {
+        let s: String = EnvStrValue::new("test", " value ").into();
+        assert_eq!(s, "value");
+    }
 }

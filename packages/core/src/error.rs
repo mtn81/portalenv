@@ -43,3 +43,57 @@ impl std::fmt::Display for Error {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error as _;
+
+    use super::*;
+
+    #[test]
+    fn test_display() {
+        let var_error = std::env::VarError::NotPresent;
+        assert_eq!(
+            Error::from(var_error.clone()).to_string(),
+            var_error.to_string()
+        );
+
+        let dotenvy_error = dotenvy::Error::LineParse("x".to_string(), 1);
+        let expected = dotenvy_error.to_string();
+        assert_eq!(Error::from(dotenvy_error).to_string(), expected);
+
+        assert_eq!(
+            Error::ValConversionError("message".to_string()).to_string(),
+            "message"
+        );
+        assert_eq!(
+            Error::MissingEnvName.to_string(),
+            "Missing environment name"
+        );
+        assert_eq!(
+            Error::InvalidEnvName.to_string(),
+            "Invalid environment name"
+        );
+    }
+
+    #[test]
+    fn test_source() {
+        assert!(
+            Error::from(std::env::VarError::NotPresent)
+                .source()
+                .is_some()
+        );
+        assert!(
+            Error::from(dotenvy::Error::LineParse("x".to_string(), 1))
+                .source()
+                .is_some()
+        );
+        assert!(
+            Error::ValConversionError("message".to_string())
+                .source()
+                .is_none()
+        );
+        assert!(Error::MissingEnvName.source().is_none());
+        assert!(Error::InvalidEnvName.source().is_none());
+    }
+}
