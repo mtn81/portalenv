@@ -1,6 +1,8 @@
 ---
 name: review-guidelines
-description: portalenv のコードレビューの観点と書き方。PR、ブランチ、コミット、手元の差分など、対象を問わずレビューを依頼されたとき (`@claude` でのレビュー依頼や /code-review を含む) に使う。
+description: |
+  portalenv のコードレビューの観点と書き方。
+  PR、ブランチ、コミット、手元の差分など、対象を問わずレビューを依頼されたとき (`@claude` でのレビュー依頼や /code-review を含む) に使う。
 ---
 
 # レビューの観点
