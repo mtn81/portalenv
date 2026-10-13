@@ -335,6 +335,11 @@ impl Parse for EnvPortalAttrArgs {
                 input.parse::<kw::env_name_key>()?;
                 input.parse::<Token![=]>()?;
                 env_name_key = Some(input.parse()?);
+            } else {
+                // Without this, an unknown key is never consumed and the loop never ends
+                return Err(input.error(
+                    "unknown argument, expected one of `mapping`, `dotenv_file`, `env_name_key`",
+                ));
             }
             input.parse::<Option<Token![,]>>()?;
         }
