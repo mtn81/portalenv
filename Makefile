@@ -21,6 +21,12 @@ test-all: ## Run all tests.
 	cd packages/tests/default_dotenv && cargo test --verbose -- --nocapture
 	cd packages/tests/include_with_dotenv && cargo test --verbose -- --nocapture
 
+.PHONY: coverage
+coverage: ## Measure test coverage of the workspace (requires cargo-llvm-cov).
+	cargo llvm-cov --workspace --no-report
+	cargo llvm-cov report
+	cargo llvm-cov report --html
+
 .PHONY: udeps-all
 udeps-all: ## Find unused dependencies in all packages (requires nightly and cargo-udeps).
 	cargo +nightly udeps --workspace --all-targets
