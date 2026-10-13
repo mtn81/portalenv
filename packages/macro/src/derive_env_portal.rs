@@ -134,11 +134,12 @@ macro_rules! define {
 
 pub(crate) use define;
 
-use proc_macro_error::abort;
+use proc_macro_error::{abort, abort_if_dirty, emit_error};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, Ident, Lit, LitStr, Pat, Token, Type,
+    Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, FieldsNamed, Ident, Lit, LitStr, Pat,
+    Token, Type,
     parse::{Parse, ParseStream},
     parse2,
     spanned::Spanned,
@@ -152,7 +153,7 @@ pub fn exec(input: TokenStream2) -> TokenStream2 {
     let DeriveInput {
         data:
             Data::Struct(DataStruct {
-                fields: Fields::Named(_),
+                fields: Fields::Named(FieldsNamed { named: fields, .. }),
                 ..
             }),
         ident,
@@ -180,6 +181,18 @@ pub fn exec(input: TokenStream2) -> TokenStream2 {
             );
         })
         .unwrap_or_default();
+
+    for field_ident in fields.iter().filter_map(|field| field.ident.as_ref()) {
+        if !attr_args
+            .mapping
+            .fields
+            .iter()
+            .any(|(key, _)| key == field_ident)
+        {
+            emit_error!(field_ident, "missing field `{}` in `mapping`", field_ident);
+        }
+    }
+    abort_if_dirty();
 
     let constructor = make_constructor(None, None, &attr_args.mapping);
     let dotenv_file = attr_args

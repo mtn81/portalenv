@@ -7,6 +7,7 @@ use portalenv::*;
 pub struct EnvConfig {
     pub foo: String,
     pub bar: String,
+    pub baz: u32,
 }
 
 fn main() {}
