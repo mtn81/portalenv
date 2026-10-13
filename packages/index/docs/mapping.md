@@ -141,8 +141,9 @@ assert_eq!(config.window, (800, 600));
 ```
 
 The same syntax can be used in environment variables and `.env` files, for
-example `ALLOWED_PORTS=[80, 443]`. See [Value types](crate::docs::value_types)
-for the details.
+example `ALLOWED_PORTS='[80, 443]'`. See
+[Value types](crate::docs::value_types#collections) for the details, including
+how to quote such values in a `.env` file.
 
 ## Environment variables
 
