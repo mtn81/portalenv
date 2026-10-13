@@ -32,16 +32,13 @@ where
         if let Some(c) = RE_ARRAY.captures(&s)
             && let (_, [c]) = c.extract()
         {
-            Ok(RE_ELEM
+            RE_ELEM
                 .captures_iter(c)
-                .flat_map(|elem| {
-                    if let Some(elem) = elem.get(1) {
-                        Some(T::from_env_str(EnvStrValue::new(s.name, elem.as_str())))
-                    } else {
-                        None
-                    }
+                .map(|elem| {
+                    let (_, [elem]) = elem.extract();
+                    T::from_env_str(EnvStrValue::new(s.name, elem))
                 })
-                .collect::<Result<Vec<T>>>()?)
+                .collect()
         } else {
             Err(Self::conversion_error(s))
         }
@@ -67,22 +64,16 @@ where
         if let Some(c) = RE_HASHMAP.captures(&s)
             && let (_, [c]) = c.extract()
         {
-            let v = RE_ENTRY
+            RE_ENTRY
                 .captures_iter(c)
-                .map(|c| -> Result<Option<(K, V)>> {
-                    if let Some(k) = c.get(1)
-                        && let Some(v) = c.get(2)
-                    {
-                        Ok(Some((
-                            K::from_env_str(EnvStrValue::new(s.name, k.as_str()))?,
-                            V::from_env_str(EnvStrValue::new(s.name, v.as_str()))?,
-                        )))
-                    } else {
-                        Ok(None)
-                    }
+                .map(|entry| {
+                    let (_, [k, v]) = entry.extract();
+                    Ok((
+                        K::from_env_str(EnvStrValue::new(s.name, k))?,
+                        V::from_env_str(EnvStrValue::new(s.name, v))?,
+                    ))
                 })
-                .collect::<Result<Vec<Option<(K, V)>>>>()?;
-            Ok(v.into_iter().flatten().collect())
+                .collect()
         } else {
             Err(Self::conversion_error(s))
         }
@@ -99,15 +90,10 @@ macro_rules! def_from_env_str_value_for_tuple {
                 if let Some(c) = RE_TUPLE.captures(&s)
                     && let (_, [c]) = c.extract()
                 {
-                    let mut elems = RE_ELEM
-                        .captures_iter(c)
-                        .flat_map(|elem| {
-                            if let Some(elem) = elem.get(1) {
-                                Some(elem.as_str())
-                            } else {
-                                None
-                            }
-                        });
+                    let mut elems = RE_ELEM.captures_iter(c).map(|elem| {
+                        let (_, [elem]) = elem.extract();
+                        elem
+                    });
 
                     let tuple = (
                         $($T::from_env_str(
