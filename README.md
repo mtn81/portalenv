@@ -140,7 +140,7 @@ fn main() {
 
 ## Guides
 
-For detailed guides, see the [docs page](https://docs.rs/portalenv/latest/portalenv/docs/index.html)
+For a step-by-step introduction and detailed explanations of each feature, see the [user guide](https://docs.rs/portalenv/latest/portalenv/docs/index.html).
 
 ## License
 
