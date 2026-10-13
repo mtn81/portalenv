@@ -58,7 +58,7 @@ pub(crate) use define;
 use proc_macro_error::abort;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Data, DataEnum, DeriveInput, parse2, spanned::Spanned};
+use syn::{Data, DataEnum, DeriveInput, Fields, parse2, spanned::Spanned};
 
 pub fn exec(input: TokenStream2) -> TokenStream2 {
     let span = input.span();
@@ -72,6 +72,13 @@ pub fn exec(input: TokenStream2) -> TokenStream2 {
     else {
         abort!(span, "EnvEnum can only be derived for enums");
     };
+
+    if let Some(v) = variants.iter().find(|v| !matches!(v.fields, Fields::Unit)) {
+        abort!(
+            v.ident,
+            "EnvEnum can only be derived for enums with unit variants"
+        );
+    }
 
     let variant_match_arms = variants.iter().map(|v| {
         let vident = &v.ident;

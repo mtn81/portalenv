@@ -32,16 +32,13 @@ where
         if let Some(c) = RE_ARRAY.captures(&s)
             && let (_, [c]) = c.extract()
         {
-            Ok(RE_ELEM
+            RE_ELEM
                 .captures_iter(c)
-                .flat_map(|elem| {
-                    if let Some(elem) = elem.get(1) {
-                        Some(T::from_env_str(EnvStrValue::new(s.name, elem.as_str())))
-                    } else {
-                        None
-                    }
+                .map(|elem| {
+                    let (_, [elem]) = elem.extract();
+                    T::from_env_str(EnvStrValue::new(s.name, elem))
                 })
-                .collect::<Result<Vec<T>>>()?)
+                .collect()
         } else {
             Err(Self::conversion_error(s))
         }
@@ -67,22 +64,16 @@ where
         if let Some(c) = RE_HASHMAP.captures(&s)
             && let (_, [c]) = c.extract()
         {
-            let v = RE_ENTRY
+            RE_ENTRY
                 .captures_iter(c)
-                .map(|c| -> Result<Option<(K, V)>> {
-                    if let Some(k) = c.get(1)
-                        && let Some(v) = c.get(2)
-                    {
-                        Ok(Some((
-                            K::from_env_str(EnvStrValue::new(s.name, k.as_str()))?,
-                            V::from_env_str(EnvStrValue::new(s.name, v.as_str()))?,
-                        )))
-                    } else {
-                        Ok(None)
-                    }
+                .map(|entry| {
+                    let (_, [k, v]) = entry.extract();
+                    Ok((
+                        K::from_env_str(EnvStrValue::new(s.name, k))?,
+                        V::from_env_str(EnvStrValue::new(s.name, v))?,
+                    ))
                 })
-                .collect::<Result<Vec<Option<(K, V)>>>>()?;
-            Ok(v.into_iter().flatten().collect())
+                .collect()
         } else {
             Err(Self::conversion_error(s))
         }
@@ -99,17 +90,12 @@ macro_rules! def_from_env_str_value_for_tuple {
                 if let Some(c) = RE_TUPLE.captures(&s)
                     && let (_, [c]) = c.extract()
                 {
-                    let mut elems = RE_ELEM
-                        .captures_iter(c)
-                        .flat_map(|elem| {
-                            if let Some(elem) = elem.get(1) {
-                                Some(elem.as_str())
-                            } else {
-                                None
-                            }
-                        });
+                    let mut elems = RE_ELEM.captures_iter(c).map(|elem| {
+                        let (_, [elem]) = elem.extract();
+                        elem
+                    });
 
-                    Ok((
+                    let tuple = (
                         $($T::from_env_str(
                             EnvStrValue::new(
                                 &s.name,
@@ -120,7 +106,13 @@ macro_rules! def_from_env_str_value_for_tuple {
                                 }
                             )
                         )?,)+
-                    ))
+                    );
+
+                    if elems.next().is_some() {
+                        return Err(Self::conversion_error(s));
+                    }
+
+                    Ok(tuple)
                 } else {
                     Err(Self::conversion_error(s))
                 }
@@ -167,7 +159,7 @@ impl EnvStrValue {
             if let Some(c) = RE_STR.captures(&s)
                 && let (_, [s]) = c.extract()
             {
-                // "..." で囲まれた文字列はそのまま返す
+                // Return a string enclosed in "..." as is (without trimming)
                 s.to_string()
             } else {
                 s.trim().to_string()
@@ -231,7 +223,7 @@ static RE_ELEM: LazyLock<Regex> = LazyLock::new(|| {
         .expect("Failed to create regex for Element parsing")
 });
 static RE_STR: LazyLock<Regex> = LazyLock::new(|| {
-    regex::Regex::new(r#"(?s)^\s*"(.*)"\s*"#)
+    regex::Regex::new(r#"(?s)^\s*"(.*)"\s*$"#)
         .expect("Failed to create regex for string literal parsing")
 });
 static RE_HASHMAP: LazyLock<Regex> = LazyLock::new(|| {
@@ -259,6 +251,7 @@ mod tests {
             EnvStrValue::new("test", r#" " test " "#).to_string(),
             " test "
         );
+        assert_eq!(EnvStrValue::new("test", r#""a" b"#).to_string(), r#""a" b"#);
     }
 
     #[test]
@@ -370,5 +363,118 @@ mod tests {
             .convert()
             .unwrap();
         assert_eq!(r, ("a,x".to_string(), 1, true));
+    }
+
+    #[test]
+    fn test_convert_str_to_tuple_with_wrong_arity() {
+        let r: Result<(u32, u32)> = EnvStrValue::new("test", "(1, 2, 3)").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<(u32, u32)> = EnvStrValue::new("test", "(1)").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+    }
+
+    #[test]
+    fn test_convert_empty_collections() {
+        let r: Vec<u32> = EnvStrValue::new("test", "[]").convert().unwrap();
+        assert!(r.is_empty());
+
+        let r: HashSet<u32> = EnvStrValue::new("test", " [ ] ").convert().unwrap();
+        assert!(r.is_empty());
+
+        let r: HashMap<String, u32> = EnvStrValue::new("test", "{}").convert().unwrap();
+        assert!(r.is_empty());
+    }
+
+    #[test]
+    fn test_convert_collections_without_brackets() {
+        let r: Result<Vec<u32>> = EnvStrValue::new("test", "1, 2").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<HashSet<u32>> = EnvStrValue::new("test", "1, 2").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<HashMap<String, u32>> = EnvStrValue::new("test", "a: 1").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<(String, u32)> = EnvStrValue::new("test", "a, 1").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+    }
+
+    #[test]
+    fn test_convert_collections_with_invalid_element() {
+        let r: Result<Vec<u32>> = EnvStrValue::new("test", "[1, x]").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<HashMap<String, u32>> = EnvStrValue::new("test", "{a: x}").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+
+        let r: Result<(String, u32)> = EnvStrValue::new("test", r#"("a", x)"#).convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+    }
+
+    #[test]
+    fn test_convert_hashmap_with_duplicate_keys() {
+        let r: HashMap<String, u32> = EnvStrValue::new("test", "{a: 1, a: 2}").convert().unwrap();
+        assert_eq!(r, HashMap::from([("a".to_string(), 2)]));
+    }
+
+    #[test]
+    fn test_convert_nested_collections_is_unsupported() {
+        let r: Result<Vec<Vec<u32>>> = EnvStrValue::new("test", "[[1, 2], [3]]").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+    }
+
+    #[test]
+    fn test_convert_primitives() {
+        assert_eq!(
+            EnvStrValue::new("t", "-128").convert::<i8>().unwrap(),
+            i8::MIN
+        );
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<i16>().unwrap(), -1);
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<i32>().unwrap(), -1);
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<i64>().unwrap(), -1);
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<i128>().unwrap(), -1);
+        assert_eq!(EnvStrValue::new("t", "-1").convert::<isize>().unwrap(), -1);
+        assert_eq!(
+            EnvStrValue::new("t", "255").convert::<u8>().unwrap(),
+            u8::MAX
+        );
+        assert_eq!(EnvStrValue::new("t", "1").convert::<u16>().unwrap(), 1);
+        assert_eq!(EnvStrValue::new("t", "1").convert::<u64>().unwrap(), 1);
+        assert_eq!(EnvStrValue::new("t", "1").convert::<u128>().unwrap(), 1);
+        assert_eq!(EnvStrValue::new("t", "1.5").convert::<f32>().unwrap(), 1.5);
+        assert_eq!(EnvStrValue::new("t", "1.5").convert::<f64>().unwrap(), 1.5);
+        assert!(EnvStrValue::new("t", "true").convert::<bool>().unwrap());
+    }
+
+    #[test]
+    fn test_convert_primitives_out_of_range() {
+        for value in ["256", "-1"] {
+            let r: Result<u8> = EnvStrValue::new("test", value).convert();
+            assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+        }
+
+        for value in ["TRUE", "1", "yes"] {
+            let r: Result<bool> = EnvStrValue::new("test", value).convert();
+            assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
+        }
+    }
+
+    #[test]
+    fn test_conversion_error_message() {
+        let err = EnvStrValue::new("PORT", "abc")
+            .convert::<u32>()
+            .unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("u32"), "{message}");
+        assert!(message.contains("abc"), "{message}");
+        assert!(message.contains("PORT"), "{message}");
+    }
+
+    #[test]
+    fn test_into_string() {
+        let s: String = EnvStrValue::new("test", " value ").into();
+        assert_eq!(s, "value");
     }
 }

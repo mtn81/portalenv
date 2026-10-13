@@ -1,0 +1,7 @@
+error: failed to parse 'env_portal' attribute: expected `:`
+ --> tests/compile_fail/invalid_mapping_syntax.rs:4:1
+  |
+4 | / #[env_portal(mapping = {
+5 | |     foo "foo-value",
+6 | | })]
+  | |___^

@@ -3,6 +3,11 @@ description: ""
 runs:
   using: "composite"
   steps:
+    - name: Install cargo-machete
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-machete
+
     - name: Format and lint check
       shell: bash
       run: make lint

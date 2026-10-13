@@ -11,22 +11,25 @@ pub trait EnvPortal {
     where
         Self: Sized,
     {
-        // load the .env file if it exists
-        if let Some(file) = Self::dotenv_file()
-            && Path::new(file).exists()
-        {
-            dotenvy::from_filename_override(file)?;
-        }
+        let base_file = Self::dotenv_file().filter(|file| Path::new(file).exists());
 
-        let env = Self::env_name_key().map(std::env::var).transpose()?;
+        let env = Self::env_name_key()
+            .map(|key| env_name(key, base_file))
+            .transpose()?;
 
+        // dotenvy::from_filename never overrides variables that are already set, so loading
+        // the more specific file first gives: process env > `.env.{env}` > `.env`.
         if let Some(file) = Self::dotenv_file()
             && let Some(ref env) = env
         {
             let file = &format!("{file}.{env}");
             if Path::new(file).exists() {
-                dotenvy::from_filename_override(file)?;
+                dotenvy::from_filename(file)?;
             }
+        }
+
+        if let Some(file) = base_file {
+            dotenvy::from_filename(file)?;
         }
 
         Self::from_env_with(env)
@@ -35,6 +38,23 @@ pub trait EnvPortal {
     fn from_env_with(env: Option<String>) -> Result<Self>
     where
         Self: Sized;
+}
+
+fn env_name(key: &str, base_file: Option<&str>) -> Result<String> {
+    match std::env::var(key) {
+        Err(std::env::VarError::NotPresent) => {
+            if let Some(file) = base_file {
+                for item in dotenvy::from_filename_iter(file)? {
+                    let (name, value) = item?;
+                    if name == key {
+                        return Ok(value);
+                    }
+                }
+            }
+            Err(std::env::VarError::NotPresent.into())
+        }
+        result => Ok(result?),
+    }
 }
 
 #[cfg(test)]

@@ -1,0 +1,11 @@
+error: missing field `bar` in `mapping`
+ --> tests/compile_fail/missing_mapping_field.rs:9:9
+  |
+9 |     pub bar: String,
+  |         ^^^
+
+error: missing field `baz` in `mapping`
+  --> tests/compile_fail/missing_mapping_field.rs:10:9
+   |
+10 |     pub baz: u32,
+   |         ^^^

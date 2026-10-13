@@ -4,6 +4,9 @@ version = "0.0.0"
 edition = "2024"
 publish = false
 
+# Empty table to keep this package out of any parent workspace
+[workspace]
+
 [dependencies]
 portalenv = { path = "../../index" }
 

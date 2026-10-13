@@ -25,14 +25,18 @@ macro_rules! define {
         /// - `dotenv_file = "path"` — path to the `.env` file to load,
         ///   relative to the current working directory. Defaults to
         ///   `"<CARGO_MANIFEST_DIR>/.env"`. If `env_name_key` resolves to a
-        ///   value (say `"local"`), a second file named `"path.local"` is
-        ///   loaded afterwards (when present), overriding keys from the base
-        ///   file.
+        ///   value (say `"local"`), an environment-specific file named
+        ///   `"path.local"` is loaded as well. Values are loaded into the
+        ///   process environment without overriding variables that are already
+        ///   set, so the precedence is: process environment > `"path.local"` >
+        ///   `"path"`. A file that does not exist is skipped.
         /// - `env_name_key = "ENV_VAR_NAME"` — name of the environment
         ///   variable that identifies the current environment (e.g.
-        ///   `"APP_ENV"`). Its value is required by `env_match` /
-        ///   `env_partial_match` mapping values and by the environment-specific
-        ///   `.env` file described above. When omitted, both `env_match` and
+        ///   `"APP_ENV"`). It is read from the process environment, or from
+        ///   the `dotenv_file` when it is not set there. Its value is required
+        ///   by `env_match` / `env_partial_match` mapping values and by the
+        ///   environment-specific `.env` file described above. When omitted,
+        ///   both `env_match` and
         ///   `env_partial_match` fields always fail with
         ///   [`Error::MissingEnvName`], since no environment value is
         ///   available to match against.
@@ -134,11 +138,12 @@ macro_rules! define {
 
 pub(crate) use define;
 
-use proc_macro_error::abort;
+use proc_macro_error::{abort, abort_if_dirty, emit_error};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, Ident, Lit, LitStr, Pat, Token, Type,
+    Data, DataStruct, DeriveInput, Expr, ExprLit, Fields, FieldsNamed, Ident, Lit, LitStr, Pat,
+    Token, Type,
     parse::{Parse, ParseStream},
     parse2,
     spanned::Spanned,
@@ -152,7 +157,7 @@ pub fn exec(input: TokenStream2) -> TokenStream2 {
     let DeriveInput {
         data:
             Data::Struct(DataStruct {
-                fields: Fields::Named(_),
+                fields: Fields::Named(FieldsNamed { named: fields, .. }),
                 ..
             }),
         ident,
@@ -180,6 +185,18 @@ pub fn exec(input: TokenStream2) -> TokenStream2 {
             );
         })
         .unwrap_or_default();
+
+    for field_ident in fields.iter().filter_map(|field| field.ident.as_ref()) {
+        if !attr_args
+            .mapping
+            .fields
+            .iter()
+            .any(|(key, _)| key == field_ident)
+        {
+            emit_error!(field_ident, "missing field `{}` in `mapping`", field_ident);
+        }
+    }
+    abort_if_dirty();
 
     let constructor = make_constructor(None, None, &attr_args.mapping);
     let dotenv_file = attr_args
@@ -270,10 +287,11 @@ fn make_constructor(
                 };
 
                 quote!({
-                    let Some(env) = env.as_ref() else {
+                    // Don't shadow `env`: nested env_match blocks read it again
+                    let Some(env_name) = env.as_ref() else {
                         return Err(portalenv::Error::MissingEnvName);
                     };
-                    match env.as_str() {
+                    match env_name.as_str() {
                         #(#arms)*
                         #fallback_arm,
                     }
@@ -323,18 +341,21 @@ impl Parse for EnvPortalAttrArgs {
         let mut env_name_key = None;
 
         while !input.is_empty() {
-            if input.peek(kw::mapping) {
+            let lookahead = input.lookahead1();
+            if lookahead.peek(kw::mapping) {
                 input.parse::<kw::mapping>()?;
                 input.parse::<Token![=]>()?;
                 mapping = input.parse()?;
-            } else if input.peek(kw::dotenv_file) {
+            } else if lookahead.peek(kw::dotenv_file) {
                 input.parse::<kw::dotenv_file>()?;
                 input.parse::<Token![=]>()?;
                 dotenv_file = Some(input.parse()?);
-            } else if input.peek(kw::env_name_key) {
+            } else if lookahead.peek(kw::env_name_key) {
                 input.parse::<kw::env_name_key>()?;
                 input.parse::<Token![=]>()?;
                 env_name_key = Some(input.parse()?);
+            } else {
+                return Err(lookahead.error());
             }
             input.parse::<Option<Token![,]>>()?;
         }
@@ -451,7 +472,7 @@ impl Parse for MappingValue {
             let mapping = input.parse()?;
             Ok(MappingValue::Nested { ty, mapping })
         } else if input.peek(token::Brace) {
-            // { a: 1, b: 2 } のような Mapの定義
+            // Map definition such as { a: 1, b: 2 }
             let content;
             syn::braced!(content in input);
 

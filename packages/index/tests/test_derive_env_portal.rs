@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_variables)]
+
 use std::collections::{HashMap, HashSet};
 
 use portalenv::*;
@@ -273,7 +275,10 @@ fn test_derive_env_portal_with_env_match() {
         pub baz: String,
     }
 
+    // Values loaded from a dotenv file stay in the process env and are not overridden by later
+    // loads, so remove them before switching the environment.
     unsafe {
+        std::env::remove_var("ENV_MATCH_TEST_BAR");
         std::env::set_var("TEST_ENV1", "local");
     }
     let config = EnvConfig::from_env().unwrap();
@@ -282,6 +287,7 @@ fn test_derive_env_portal_with_env_match() {
     assert_eq!(config.foo.baz, "baz-local-value".to_string());
 
     unsafe {
+        std::env::remove_var("ENV_MATCH_TEST_BAR");
         std::env::set_var("TEST_ENV1", "stg");
     }
     let config = EnvConfig::from_env().unwrap();
@@ -454,4 +460,205 @@ fn test_derive_env_portal_with_env_include_and_override_fields() {
     assert_eq!(config.other.foo, "override-foo".to_string());
     assert_eq!(config.other.bar, "test-bar".to_string());
     assert_eq!(config.other.baz, "override-baz".to_string());
+}
+
+#[test]
+fn test_derive_env_portal_with_none() {
+    #[derive(EnvPortal)]
+    #[env_portal(mapping = {
+        hoge: None,
+    })]
+    pub struct EnvConfig {
+        pub hoge: Option<String>,
+    }
+
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, None);
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_nested_env_match() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "TEST_ENV3",
+        mapping = {
+            hoge: env_match {
+                "local" | "stg" => env_match {
+                    "local" => "hoge-local-value",
+                    _ => "hoge-staging-value"
+                },
+                _ => "hoge-other-value"
+            },
+            other: env_match {
+                "local" => env_include<OtherEnvConfig> {
+                    foo: "override-foo",
+                },
+                _ => env_include<OtherEnvConfig>
+            },
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+        pub other: OtherEnvConfig,
+    }
+
+    #[derive(EnvPortal)]
+    #[env_portal(mapping = {
+        foo: "test-foo",
+        bar: "test-bar",
+    })]
+    pub struct OtherEnvConfig {
+        pub foo: String,
+        pub bar: String,
+    }
+
+    unsafe {
+        std::env::set_var("TEST_ENV3", "local");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-local-value");
+    assert_eq!(config.other.foo, "override-foo");
+    assert_eq!(config.other.bar, "test-bar");
+
+    unsafe {
+        std::env::set_var("TEST_ENV3", "stg");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-staging-value");
+    assert_eq!(config.other.foo, "test-foo");
+
+    unsafe {
+        std::env::set_var("TEST_ENV3", "prd");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-other-value");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_missing_dotenv_file() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "TEST_ENV4",
+        dotenv_file = "tests/not-found.env",
+        mapping = {
+            hoge: "hoge-value",
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+    }
+
+    unsafe {
+        std::env::set_var("TEST_ENV4", "local");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.hoge, "hoge-value");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_without_env_specific_dotenv_file() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "TEST_ENV4",
+        dotenv_file = "tests/.env",
+        mapping = {
+            bar: env_var::ENV_MATCH_TEST_BAR,
+        }
+    )]
+    pub struct EnvConfig {
+        pub bar: String,
+    }
+
+    unsafe {
+        std::env::remove_var("ENV_MATCH_TEST_BAR");
+        std::env::set_var("TEST_ENV4", "prd");
+    }
+    let config = EnvConfig::from_env().unwrap();
+    assert_eq!(config.bar, "bar-env-value");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_broken_dotenv_file() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        dotenv_file = "tests/broken.env",
+        mapping = {
+            hoge: "hoge-value",
+        }
+    )]
+    pub struct EnvConfig {
+        pub hoge: String,
+    }
+
+    let result = EnvConfig::from_env();
+    assert!(matches!(result, Err(Error::DotEnvyError(_))));
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_precedence_of_process_env_and_dotenv_files() {
+    clear_precedence_env();
+    unsafe {
+        std::env::set_var("PRECEDENCE_TEST_ENV", "local");
+        std::env::set_var("PRECEDENCE_ALL", "from-process");
+    }
+
+    let config = PrecedenceConfig::from_env().unwrap();
+    assert_eq!(config.all, "from-process");
+    assert_eq!(config.files, "from-dotenv-local");
+    assert_eq!(config.base, "from-dotenv");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_env_name_only_in_dotenv() {
+    clear_precedence_env();
+
+    let config = PrecedenceConfig::from_env().unwrap();
+    assert_eq!(config.files, "from-dotenv-local");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_env_name_in_process_env_wins_over_dotenv() {
+    clear_precedence_env();
+    unsafe {
+        std::env::set_var("PRECEDENCE_TEST_ENV", "stg");
+    }
+
+    let config = PrecedenceConfig::from_env().unwrap();
+    assert_eq!(config.files, "from-dotenv");
+}
+
+#[derive(EnvPortal)]
+#[env_portal(
+    env_name_key = "PRECEDENCE_TEST_ENV",
+    dotenv_file = "tests/precedence.env",
+    mapping = {
+        all: env_var::PRECEDENCE_ALL,
+        files: env_var::PRECEDENCE_FILES,
+        base: env_var::PRECEDENCE_BASE,
+    }
+)]
+pub struct PrecedenceConfig {
+    pub all: String,
+    pub files: String,
+    pub base: String,
+}
+
+fn clear_precedence_env() {
+    for key in [
+        "PRECEDENCE_TEST_ENV",
+        "PRECEDENCE_ALL",
+        "PRECEDENCE_FILES",
+        "PRECEDENCE_BASE",
+    ] {
+        unsafe {
+            std::env::remove_var(key);
+        }
+    }
 }

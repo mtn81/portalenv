@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use portalenv::*;
 
 use default_dotenv_test::EnvConfig as AnotherEnvConfig;

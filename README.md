@@ -56,7 +56,7 @@ portalenv = "0.1"
 
 ## Example
 
-```rust
+```rust,no_run
 use portalenv::*;
 use std::collections::{HashMap, HashSet};
 
