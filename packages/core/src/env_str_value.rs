@@ -231,7 +231,7 @@ static RE_ELEM: LazyLock<Regex> = LazyLock::new(|| {
         .expect("Failed to create regex for Element parsing")
 });
 static RE_STR: LazyLock<Regex> = LazyLock::new(|| {
-    regex::Regex::new(r#"(?s)^\s*"(.*)"\s*"#)
+    regex::Regex::new(r#"(?s)^\s*"(.*)"\s*$"#)
         .expect("Failed to create regex for string literal parsing")
 });
 static RE_HASHMAP: LazyLock<Regex> = LazyLock::new(|| {
@@ -259,6 +259,8 @@ mod tests {
             EnvStrValue::new("test", r#" " test " "#).to_string(),
             " test "
         );
+        // Text after the closing quote must not be dropped
+        assert_eq!(EnvStrValue::new("test", r#""a" b"#).to_string(), r#""a" b"#);
     }
 
     #[test]
