@@ -275,7 +275,10 @@ fn test_derive_env_portal_with_env_match() {
         pub baz: String,
     }
 
+    // Values loaded from a dotenv file stay in the process env and are not overridden by later
+    // loads, so remove them before switching the environment.
     unsafe {
+        std::env::remove_var("ENV_MATCH_TEST_BAR");
         std::env::set_var("TEST_ENV1", "local");
     }
     let config = EnvConfig::from_env().unwrap();
@@ -284,6 +287,7 @@ fn test_derive_env_portal_with_env_match() {
     assert_eq!(config.foo.baz, "baz-local-value".to_string());
 
     unsafe {
+        std::env::remove_var("ENV_MATCH_TEST_BAR");
         std::env::set_var("TEST_ENV1", "stg");
     }
     let config = EnvConfig::from_env().unwrap();
@@ -569,6 +573,7 @@ fn test_derive_env_portal_without_env_specific_dotenv_file() {
     }
 
     unsafe {
+        std::env::remove_var("ENV_MATCH_TEST_BAR");
         std::env::set_var("TEST_ENV4", "prd");
     }
     let config = EnvConfig::from_env().unwrap();
@@ -595,21 +600,65 @@ fn test_derive_env_portal_with_broken_dotenv_file() {
 
 #[test]
 #[serial]
-fn test_derive_env_portal_dotenv_overrides_process_env() {
-    #[derive(EnvPortal)]
-    #[env_portal(
-        dotenv_file = "tests/override.env",
-        mapping = {
-            hoge: env_var::OVERRIDE_TEST_VALUE,
-        }
-    )]
-    pub struct EnvConfig {
-        pub hoge: String,
+fn test_derive_env_portal_precedence_of_process_env_and_dotenv_files() {
+    clear_precedence_env();
+    unsafe {
+        std::env::set_var("PRECEDENCE_TEST_ENV", "local");
+        std::env::set_var("PRECEDENCE_ALL", "from-process");
     }
 
+    let config = PrecedenceConfig::from_env().unwrap();
+    assert_eq!(config.all, "from-process");
+    assert_eq!(config.files, "from-dotenv-local");
+    assert_eq!(config.base, "from-dotenv");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_env_name_only_in_dotenv() {
+    clear_precedence_env();
+
+    let config = PrecedenceConfig::from_env().unwrap();
+    assert_eq!(config.files, "from-dotenv-local");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_env_name_in_process_env_wins_over_dotenv() {
+    clear_precedence_env();
     unsafe {
-        std::env::set_var("OVERRIDE_TEST_VALUE", "from-process");
+        std::env::set_var("PRECEDENCE_TEST_ENV", "stg");
     }
-    let config = EnvConfig::from_env().unwrap();
-    assert_eq!(config.hoge, "from-dotenv");
+
+    let config = PrecedenceConfig::from_env().unwrap();
+    assert_eq!(config.files, "from-dotenv");
+}
+
+#[derive(EnvPortal)]
+#[env_portal(
+    env_name_key = "PRECEDENCE_TEST_ENV",
+    dotenv_file = "tests/precedence.env",
+    mapping = {
+        all: env_var::PRECEDENCE_ALL,
+        files: env_var::PRECEDENCE_FILES,
+        base: env_var::PRECEDENCE_BASE,
+    }
+)]
+pub struct PrecedenceConfig {
+    pub all: String,
+    pub files: String,
+    pub base: String,
+}
+
+fn clear_precedence_env() {
+    for key in [
+        "PRECEDENCE_TEST_ENV",
+        "PRECEDENCE_ALL",
+        "PRECEDENCE_FILES",
+        "PRECEDENCE_BASE",
+    ] {
+        unsafe {
+            std::env::remove_var(key);
+        }
+    }
 }

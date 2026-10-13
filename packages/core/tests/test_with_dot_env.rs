@@ -29,6 +29,10 @@ fn test_with_dot_env() {
         }
     }
 
+    // Remove the value another test may have loaded, since dotenv files don't override it
+    unsafe {
+        std::env::remove_var("VALUE");
+    }
     let result = TestStruct::from_env().unwrap();
     assert_eq!(result.value, "test-dotenv-value".to_string());
     assert_eq!(result.another_value, "test-another-value".to_string());
@@ -63,6 +67,7 @@ fn test_with_env_key_and_dot_env() {
     }
 
     unsafe {
+        std::env::remove_var("VALUE");
         std::env::set_var("TEST_ENV_KEY", "test");
     }
     let result = TestStruct::from_env().unwrap();

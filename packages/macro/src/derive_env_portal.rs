@@ -25,16 +25,18 @@ macro_rules! define {
         /// - `dotenv_file = "path"` — path to the `.env` file to load,
         ///   relative to the current working directory. Defaults to
         ///   `"<CARGO_MANIFEST_DIR>/.env"`. If `env_name_key` resolves to a
-        ///   value (say `"local"`), a second file named `"path.local"` is
-        ///   loaded afterwards (when present), overriding keys from the base
-        ///   file. Values loaded from these files also override environment
-        ///   variables that are already set in the process. A file that does
-        ///   not exist is skipped.
+        ///   value (say `"local"`), an environment-specific file named
+        ///   `"path.local"` is loaded as well. Values are loaded into the
+        ///   process environment without overriding variables that are already
+        ///   set, so the precedence is: process environment > `"path.local"` >
+        ///   `"path"`. A file that does not exist is skipped.
         /// - `env_name_key = "ENV_VAR_NAME"` — name of the environment
         ///   variable that identifies the current environment (e.g.
-        ///   `"APP_ENV"`). Its value is required by `env_match` /
-        ///   `env_partial_match` mapping values and by the environment-specific
-        ///   `.env` file described above. When omitted, both `env_match` and
+        ///   `"APP_ENV"`). It is read from the process environment, or from
+        ///   the `dotenv_file` when it is not set there. Its value is required
+        ///   by `env_match` / `env_partial_match` mapping values and by the
+        ///   environment-specific `.env` file described above. When omitted,
+        ///   both `env_match` and
         ///   `env_partial_match` fields always fail with
         ///   [`Error::MissingEnvName`], since no environment value is
         ///   available to match against.
