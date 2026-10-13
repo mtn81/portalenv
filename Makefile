@@ -21,6 +21,12 @@ test-all: ## Run all tests.
 	cd packages/tests/default_dotenv && cargo test --verbose -- --nocapture
 	cd packages/tests/include_with_dotenv && cargo test --verbose -- --nocapture
 
+.PHONY: udeps-all
+udeps-all: ## Find unused dependencies in all packages (requires nightly and cargo-udeps).
+	cargo +nightly udeps --workspace --all-targets
+	cd packages/tests/default_dotenv && cargo +nightly udeps --all-targets
+	cd packages/tests/include_with_dotenv && cargo +nightly udeps --all-targets
+
 .PHONY: clean-all
 clean-all: ## Clean up all packages.
 	cargo clean

@@ -11,6 +11,7 @@ Rust製の環境設定値管理のライブラリ
 - 言語: Rust (edition 2024, MSRV 1.85.0, toolchain は stable)
 - マネージャー: Cargo (ワークスペース構成)
 - `make lint` には [cargo-machete](https://github.com/bnjbvr/cargo-machete) が必要 (`cargo install cargo-machete --locked`)
+- `make udeps-all` には nightly ツールチェーンと [cargo-udeps](https://github.com/est31/cargo-udeps) が必要 (`rustup toolchain install nightly` と `cargo install cargo-udeps --locked`)
 
 ## よく使うコマンド
 
@@ -29,6 +30,9 @@ make lint-fix
 
 # 全パッケージのテスト (ワークスペース外のテストパッケージ含む)
 make test-all
+
+# 全パッケージの未使用依存をコンパイルして厳密にチェック (nightly と cargo-udeps が必要)
+make udeps-all
 
 # 全パッケージのクリーン
 make clean-all
