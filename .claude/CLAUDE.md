@@ -9,7 +9,7 @@ Rust製の環境設定値管理のライブラリ
 ## 開発環境
 
 - 言語: Rust (edition 2024, MSRV 1.85.0, toolchain は stable)
-- パッケージマネージャー: Cargo (ワークスペース構成)
+- マネージャー: Cargo (ワークスペース構成)
 
 ## よく使うコマンド
 
@@ -43,7 +43,7 @@ packages
 └── tests    ワークスペース外の結合テスト用パッケージ (default_dotenv, include_with_dotenv)
 ```
 
-## 注意事項
+## 開発時の規約
 
 - コミットする前に必ず `make lint` と `make test-all` を実行する (CIも同じ内容を実行する)
 - ソースコード (`.rs`、`Cargo.toml` など) のコメントは英語で書く
@@ -52,6 +52,38 @@ packages
 - テストは環境変数と `.env*` ファイルに依存するため、環境変数を書き換えるテストには `serial_test` の `#[serial]` を付ける
 - `packages/tests/` にテストパッケージを追加したら、Makefile の `test-all` にも追記し、`Cargo.toml` に空の `[workspace]` を書く (親ディレクトリのワークスペースに誤って所属しないようにするため)
 - バージョンは手動で変更しない。GitHub Release 時に CI がルート `Cargo.toml` の `#tag:release-version` 行を書き換えて crates.io に公開する
+- `portalenv` クレートでは、再エクスポートのみ定義する
+- `portalenv-core` クレートでは、コアな機能 (trait、struct, function など)を実装する
+- `portalenv-macro` クレートでは、手続き型マクロを実装する
+  - 可読性の観点から、1マクロが1ファイルになるように分割して、書き方を以下の例の通りに揃える。
+
+    `lib.rs`
+
+    ```
+    mod derive_env_portal;
+    derive_env_portal::define!();
+    ```
+
+    `derive_env_portal.rs`
+
+    ```
+    macro_rules! define {
+        () => {
+            /// ...
+            #[proc_macro_error]
+            #[proc_macro_derive(EnvPortal, attributes(env_portal))]
+            pub fn derive_env_portal(input: TokenStream) -> TokenStream {
+                derive_env_portal::exec(input.into()).into()
+            }
+        };
+    }
+
+    // use state statements...
+
+    pub fn exec(input: TokenStream2) -> TokenStream2 {
+        // implentation here...
+    }
+    ```
 
 ## PRレビュー時の観点
 
