@@ -1,0 +1,5 @@
+error: EnvPortal can only be derived for structs with named fields
+ --> tests/compile_fail/env_portal_on_unit_struct.rs:4:1
+  |
+4 | pub struct EnvConfig;
+  | ^^^

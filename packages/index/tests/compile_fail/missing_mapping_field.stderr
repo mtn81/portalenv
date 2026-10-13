@@ -1,0 +1,7 @@
+error[E0063]: missing field `bar` in initializer of `EnvConfig`
+ --> tests/compile_fail/missing_mapping_field.rs:3:10
+  |
+3 | #[derive(EnvPortal)]
+  |          ^^^^^^^^^ missing `bar`
+  |
+  = note: this error originates in the derive macro `EnvPortal` (in Nightly builds, run with -Z macro-backtrace for more info)
