@@ -28,7 +28,9 @@ pub trait EnvPortal {
             }
         }
 
+        // ベースのファイルがあれば読み込む
         if let Some(file) = base_file {
+            // ファイルを読み込む
             dotenvy::from_filename(file)?;
         }
 
