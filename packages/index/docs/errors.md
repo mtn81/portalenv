@@ -158,8 +158,19 @@ error[E0277]: the trait bound `LogFormat: FromEnvStrValue` is not satisfied
 A string-based value is used for a type that PortalEnv cannot convert. Derive
 [`EnvEnum`](crate::EnvEnum) for a fieldless enum, or implement
 `FromEnvStrValue` as described in
-[Value types](crate::docs::value_types#custom-types). For an `Option<T>`
-field, see [Optional values](crate::docs::value_types#optional-values).
+[Value types](crate::docs::value_types#custom-types).
+
+### `env_var_opt` for a non-`Option` field
+
+```text
+error[E0308]: `?` operator has incompatible types
+```
+
+`env_var_opt::NAME` produces an `Option<T>`, so it can only be used for an
+`Option<T>` field. Use `env_var::NAME` for a required value, or change the
+field type to `Option<T>`. The same error appears when `env_var_opt` is used in
+an `env_partial_match` arm, whose value is wrapped in `Some`; use `env_match`
+there instead.
 
 ### Derive on an unsupported type
 

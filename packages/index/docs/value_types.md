@@ -159,9 +159,11 @@ as above, or build it with a [Rust expression](crate::docs::mapping#rust-express
 
 ## Optional values
 
-`Option<T>` does not implement `FromEnvStrValue`, so an `Option<T>` field
-cannot be read directly with `env_var`. Use `None`, a `Some(...)` expression,
-or [`env_partial_match`](crate::docs::environments#values-for-some-environments-only-env_partial_match)
-instead.
+`Option<T>` implements `FromEnvStrValue` when `T` does: an empty (or
+whitespace only) value gives `None`, and any other value is converted into `T`
+and wrapped in `Some`. To also allow the variable to be unset, read it with
+`env_var_opt`; to set a value only in some environments, use
+`env_partial_match`. See [Optional values](crate::docs::mapping#optional-values)
+and [Environments](crate::docs::environments).
 
 Next: [Errors](crate::docs::errors)

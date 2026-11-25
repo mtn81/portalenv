@@ -1,0 +1,14 @@
+error[E0308]: `?` operator has incompatible types
+ --> tests/compile_fail/env_var_opt_on_non_option_field.rs:3:10
+  |
+3 | #[derive(EnvPortal)]
+  |          ^^^^^^^^^ expected `u32`, found `Option<_>`
+  |
+  = note: `?` operator cannot convert from `Option<_>` to `u32`
+  = note: expected type `u32`
+             found enum `Option<_>`
+  = note: this error originates in the derive macro `EnvPortal` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using `Option::expect` to unwrap the `Option<_>` value, panicking if the value is an `Option::None`
+  |
+3 | #[derive(EnvPortal.expect("REASON"))]
+  |                   +++++++++++++++++

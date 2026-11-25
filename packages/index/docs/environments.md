@@ -145,7 +145,80 @@ pub struct AppConfig {
 # }
 ```
 
-Note that the arm values are written without `Some(...)`.
+Note that the arm values are written without `Some(...)`. For the same reason,
+`env_var_opt` cannot be used in an `env_partial_match` arm; use `env_match` as
+described next.
+
+## Optional in some environments, required in others
+
+`env_match` also works for an `Option<T>` field. Each arm then gives an
+`Option<T>`: `env_var::NAME` requires the variable to be set, while
+`env_var_opt::NAME` gives `None` when it is not set. Both give `None` for an
+empty value. Combining them makes a variable optional in some environments and
+required in others:
+
+```rust
+use portalenv::*;
+
+#[derive(EnvPortal)]
+#[env_portal(
+    env_name_key = "APP_ENV",
+    mapping = {
+        encryption_key: env_match {
+            "local" | "docker" => env_var_opt::ENV_DOC_ENCRYPTION_KEY,
+            "stg" | "prd" => env_var::ENV_DOC_ENCRYPTION_KEY,
+        },
+    }
+)]
+pub struct AppConfig {
+    pub encryption_key: Option<String>,
+}
+
+# fn main() -> portalenv::Result<()> {
+# unsafe { std::env::remove_var("ENV_DOC_ENCRYPTION_KEY"); }
+let config = AppConfig::from_env_with(Some("local".to_string()))?;
+assert!(config.encryption_key.is_none());
+assert!(AppConfig::from_env_with(Some("prd".to_string())).is_err());
+# Ok(())
+# }
+```
+
+## Match guards
+
+An arm of `env_match` or `env_partial_match` can have a guard, written as
+`pattern if condition =>`, just like an arm of a Rust `match`. The arm is
+chosen only when the pattern matches and the condition is `true`; otherwise
+the following arms are tried:
+
+```rust
+use portalenv::*;
+
+fn has_gpu() -> bool {
+    std::env::var("ENV_DOC_GPU").is_ok()
+}
+
+#[derive(EnvPortal)]
+#[env_portal(
+    env_name_key = "APP_ENV",
+    mapping = {
+        device: env_match {
+            "local" if has_gpu() => "cuda",
+            "local" => "cpu",
+            _ => "cuda",
+        },
+    }
+)]
+pub struct AppConfig {
+    pub device: String,
+}
+
+# fn main() -> portalenv::Result<()> {
+# unsafe { std::env::remove_var("ENV_DOC_GPU"); }
+let config = AppConfig::from_env_with(Some("local".to_string()))?;
+assert_eq!(config.device, "cpu");
+# Ok(())
+# }
+```
 
 ## Per-environment `.env` files
 

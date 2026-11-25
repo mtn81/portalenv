@@ -662,3 +662,223 @@ fn clear_precedence_env() {
         }
     }
 }
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_env_var_for_option_field() {
+    #[derive(EnvPortal)]
+    #[env_portal(mapping = {
+        name: env_var::OPTION_TEST_NAME,
+        port: env_var::OPTION_TEST_PORT,
+        literal: "literal-value",
+    })]
+    pub struct EnvConfig {
+        pub name: Option<String>,
+        pub port: Option<u32>,
+        pub literal: Option<String>,
+    }
+
+    unsafe {
+        std::env::set_var("OPTION_TEST_NAME", "name-value");
+        std::env::set_var("OPTION_TEST_PORT", "8080");
+    }
+    let config = EnvConfig::from_env_with(None).unwrap();
+    assert_eq!(config.name, Some("name-value".to_string()));
+    assert_eq!(config.port, Some(8080));
+    assert_eq!(config.literal, Some("literal-value".to_string()));
+
+    unsafe {
+        std::env::set_var("OPTION_TEST_NAME", "");
+        std::env::set_var("OPTION_TEST_PORT", " ");
+    }
+    let config = EnvConfig::from_env_with(None).unwrap();
+    assert_eq!(config.name, None);
+    assert_eq!(config.port, None);
+
+    unsafe {
+        std::env::remove_var("OPTION_TEST_PORT");
+    }
+    let result = EnvConfig::from_env_with(None);
+    assert!(matches!(
+        result,
+        Err(Error::EnvVarError {
+            var,
+            field: Some("port"),
+            source: std::env::VarError::NotPresent,
+        }) if var == "OPTION_TEST_PORT"
+    ));
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_env_var_opt() {
+    #[derive(EnvPortal)]
+    #[env_portal(mapping = {
+        name: env_var_opt::OPTION_TEST_NAME,
+        server: Server {
+            port: env_var_opt::OPTION_TEST_PORT,
+        },
+    })]
+    pub struct EnvConfig {
+        pub name: Option<String>,
+        pub server: Server,
+    }
+
+    pub struct Server {
+        pub port: Option<u32>,
+    }
+
+    unsafe {
+        std::env::set_var("OPTION_TEST_NAME", "name-value");
+        std::env::set_var("OPTION_TEST_PORT", "8080");
+    }
+    let config = EnvConfig::from_env_with(None).unwrap();
+    assert_eq!(config.name, Some("name-value".to_string()));
+    assert_eq!(config.server.port, Some(8080));
+
+    unsafe {
+        std::env::set_var("OPTION_TEST_NAME", "");
+        std::env::remove_var("OPTION_TEST_PORT");
+    }
+    let config = EnvConfig::from_env_with(None).unwrap();
+    assert_eq!(config.name, None);
+    assert_eq!(config.server.port, None);
+
+    unsafe {
+        std::env::set_var("OPTION_TEST_PORT", "not-a-number");
+    }
+    let err = EnvConfig::from_env_with(None).err().unwrap();
+    assert!(matches!(err, Error::ValConversionError(_)));
+    assert!(err.to_string().contains("server.port"), "{err}");
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_env_match_for_option_field() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "OPTION_TEST_ENV",
+        mapping = {
+            key: env_match {
+                "local" | "docker" => env_var_opt::OPTION_TEST_KEY,
+                "stg" | "prod" => env_var::OPTION_TEST_KEY,
+            },
+            nested: env_match {
+                "local" => None,
+                _ => env_match {
+                    "stg" => env_var_opt::OPTION_TEST_KEY,
+                    _ => "nested-value",
+                },
+            },
+        }
+    )]
+    pub struct EnvConfig {
+        pub key: Option<String>,
+        pub nested: Option<String>,
+    }
+
+    let env = |name: &str| Some(name.to_string());
+
+    unsafe {
+        std::env::remove_var("OPTION_TEST_KEY");
+    }
+    let config = EnvConfig::from_env_with(env("local")).unwrap();
+    assert_eq!(config.key, None);
+    assert_eq!(config.nested, None);
+    let config = EnvConfig::from_env_with(env("docker")).unwrap();
+    assert_eq!(config.key, None);
+    assert_eq!(config.nested, Some("nested-value".to_string()));
+    let result = EnvConfig::from_env_with(env("prod"));
+    assert!(matches!(
+        result,
+        Err(Error::EnvVarError {
+            field: Some("key"),
+            ..
+        })
+    ));
+
+    unsafe {
+        std::env::set_var("OPTION_TEST_KEY", "");
+    }
+    let config = EnvConfig::from_env_with(env("local")).unwrap();
+    assert_eq!(config.key, None);
+    let config = EnvConfig::from_env_with(env("stg")).unwrap();
+    assert_eq!(config.key, None);
+    assert_eq!(config.nested, None);
+
+    unsafe {
+        std::env::set_var("OPTION_TEST_KEY", "key-value");
+    }
+    for name in ["local", "docker", "stg", "prod"] {
+        let config = EnvConfig::from_env_with(env(name)).unwrap();
+        assert_eq!(config.key, Some("key-value".to_string()), "{name}");
+    }
+    let config = EnvConfig::from_env_with(env("stg")).unwrap();
+    assert_eq!(config.nested, Some("key-value".to_string()));
+}
+
+#[test]
+fn test_derive_env_portal_with_env_partial_match_for_numeric_option_field() {
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "OPTION_TEST_ENV",
+        mapping = {
+            port: env_partial_match {
+                "local" => "8080",
+            },
+        }
+    )]
+    pub struct EnvConfig {
+        pub port: Option<u32>,
+    }
+
+    let config = EnvConfig::from_env_with(Some("local".to_string())).unwrap();
+    assert_eq!(config.port, Some(8080));
+    let config = EnvConfig::from_env_with(Some("stg".to_string())).unwrap();
+    assert_eq!(config.port, None);
+}
+
+#[test]
+#[serial]
+fn test_derive_env_portal_with_env_match_guard() {
+    fn enabled() -> bool {
+        std::env::var("GUARD_TEST_ENABLED").is_ok()
+    }
+
+    #[derive(EnvPortal)]
+    #[env_portal(
+        env_name_key = "GUARD_TEST_ENV",
+        mapping = {
+            mode: env_match {
+                "local" | "docker" if enabled() => "enabled",
+                "local" | "docker" => "disabled",
+                _ => "default",
+            },
+            banner: env_partial_match {
+                "local" if enabled() => "banner",
+            },
+        }
+    )]
+    pub struct EnvConfig {
+        pub mode: String,
+        pub banner: Option<String>,
+    }
+
+    unsafe {
+        std::env::set_var("GUARD_TEST_ENABLED", "1");
+    }
+    let config = EnvConfig::from_env_with(Some("docker".to_string())).unwrap();
+    assert_eq!(config.mode, "enabled");
+    assert_eq!(config.banner, None);
+    let config = EnvConfig::from_env_with(Some("local".to_string())).unwrap();
+    assert_eq!(config.banner, Some("banner".to_string()));
+
+    unsafe {
+        std::env::remove_var("GUARD_TEST_ENABLED");
+    }
+    let config = EnvConfig::from_env_with(Some("local".to_string())).unwrap();
+    assert_eq!(config.mode, "disabled");
+    assert_eq!(config.banner, None);
+    let config = EnvConfig::from_env_with(Some("prd".to_string())).unwrap();
+    assert_eq!(config.mode, "default");
+}

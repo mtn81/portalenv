@@ -57,7 +57,14 @@ macro_rules! define {
         ///   at runtime with `std::env::var` and converts it with
         ///   [`EnvStrValue::convert`]. Fails with [`Error::EnvVarError`],
         ///   carrying the variable name and the field path, if the variable
-        ///   is not set or is not valid unicode.
+        ///   is not set or is not valid unicode. For an `Option<T>` field the
+        ///   variable is still required; an empty (or whitespace only) value
+        ///   produces `None`, and any other value is converted and wrapped in
+        ///   `Some`.
+        /// - `env_var_opt::IDENT` — like `env_var::IDENT`, but for `Option<T>`
+        ///   fields only: the variable may also be unset, which produces `None`
+        ///   as an empty value does. Using it
+        ///   for a non-`Option` field fails to compile with mismatched types.
         /// - `None` — the literal Rust value `None`, useful for `Option<T>`
         ///   fields that should default to empty.
         /// - Any other Rust expression, including integer, float and bool
@@ -86,11 +93,13 @@ macro_rules! define {
         ///   value of the first matching arm (recursively, so a match arm's
         ///   value can itself be any of the forms described here, including
         ///   a nested `Type { ... }`). Fails with [`Error::InvalidEnvName`]
-        ///   if no arm matches.
+        ///   if no arm matches. An arm may have a guard, `pat if expr => value`,
+        ///   which is passed through to the generated `match` as is.
         /// - `env_partial_match { pat => value, ... }` — like `env_match`,
         ///   but the field type must be `Option<T>`: a matching arm produces
         ///   `Some(value)`, and no arm matching produces `None` instead of an
-        ///   error.
+        ///   error. Since the arm value is wrapped in `Some`, it has type `T`,
+        ///   so `env_var_opt` cannot be used here; use `env_match` instead.
         ///
         /// # Example
         ///
@@ -250,6 +259,14 @@ fn make_constructor(
                     portalenv::EnvStrValue::from_env_var(#name, #var_name)?.convert()?
                 )
             }
+            MappingValue::EnvVarOpt(var) => {
+                let var_name = var.to_string();
+                quote!(
+                    portalenv::EnvStrValue::from_env_var_opt(#name, #var_name)?
+                        .map(portalenv::EnvStrValue::convert)
+                        .transpose()?
+                )
+            }
             MappingValue::Expr(expr) => {
                 quote!(#expr)
             }
@@ -271,15 +288,16 @@ fn make_constructor(
                 }
             }
             MappingValue::EnvMatch { arms, partial } => {
-                let arms = arms.iter().map(|(pat, value)| {
+                let arms = arms.iter().map(|EnvMatchArm { pat, guard, value }| {
                     let value = make_mapping_value(name, value);
                     let value = if *partial {
                         quote!(Some(#value))
                     } else {
                         quote!(#value)
                     };
+                    let guard = guard.as_ref().map(|guard| quote!(if #guard));
                     quote!(
-                        #pat => #value,
+                        #pat #guard => #value,
                     )
                 });
 
@@ -404,6 +422,7 @@ impl Parse for Mapping {
 enum MappingValue {
     EnvStr(TokenStream2),
     EnvVar(Ident),
+    EnvVarOpt(Ident),
     Expr(Expr),
     None,
     Nested {
@@ -411,13 +430,20 @@ enum MappingValue {
         mapping: Mapping,
     },
     EnvMatch {
-        arms: Vec<(Pat, MappingValue)>,
+        arms: Vec<EnvMatchArm>,
         partial: bool,
     },
     EnvInclude {
         ty: Type,
         mapping: Mapping,
     },
+}
+
+#[derive(Debug)]
+struct EnvMatchArm {
+    pat: Pat,
+    guard: Option<Expr>,
+    value: MappingValue,
 }
 
 impl Parse for MappingValue {
@@ -430,6 +456,11 @@ impl Parse for MappingValue {
             input.parse::<token::PathSep>()?;
             let ident = input.parse()?;
             Ok(MappingValue::EnvVar(ident))
+        } else if input.peek(kw::env_var_opt) && input.peek2(token::PathSep) {
+            input.parse::<kw::env_var_opt>()?;
+            input.parse::<token::PathSep>()?;
+            let ident = input.parse()?;
+            Ok(MappingValue::EnvVarOpt(ident))
         } else if (input.peek(kw::env_match) || input.peek(kw::env_partial_match))
             && input.peek2(token::Brace)
         {
@@ -447,10 +478,15 @@ impl Parse for MappingValue {
             let mut arms = Vec::new();
             while !content.is_empty() {
                 let pat = Pat::parse_multi(&content)?;
-                // let key: Ident = content.parse()?;
+                let guard = if content.peek(Token![if]) {
+                    content.parse::<Token![if]>()?;
+                    Some(content.parse()?)
+                } else {
+                    None
+                };
                 content.parse::<Token![=>]>()?;
-                let value: MappingValue = content.parse()?;
-                arms.push((pat, value));
+                let value = content.parse()?;
+                arms.push(EnvMatchArm { pat, guard, value });
                 if content.peek(Token![,]) {
                     content.parse::<Token![,]>()?;
                 }
