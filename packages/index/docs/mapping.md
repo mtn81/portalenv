@@ -195,8 +195,48 @@ assert_eq!(config.banner.as_deref(), Some("Welcome!"));
 # }
 ```
 
-To set a value only in some environments, use `env_partial_match`, described in
-[Environments](crate::docs::environments).
+String-based values work for `Option<T>` fields as well: an empty (or
+whitespace only) value gives `None`, as a variable passed through Docker
+Compose's `${VAR:-}` often is, and any other value is converted into `T` and
+wrapped in `Some`. `env_var::NAME` still requires the variable to be set, so a
+missing variable is an error. To read a variable that may be missing, use
+`env_var_opt::NAME`, which also gives `None` when the variable is not set:
+
+```rust
+use portalenv::*;
+
+#[derive(EnvPortal)]
+#[env_portal(mapping = {
+    api_key: env_var::OPTIONAL_DOC_API_KEY,
+    proxy: env_var_opt::OPTIONAL_DOC_PROXY,
+    timeout: env_var_opt::OPTIONAL_DOC_TIMEOUT,
+})]
+pub struct AppConfig {
+    pub api_key: Option<String>,
+    pub proxy: Option<String>,
+    pub timeout: Option<u32>,
+}
+
+# fn main() -> portalenv::Result<()> {
+# unsafe {
+#     std::env::set_var("OPTIONAL_DOC_API_KEY", "secret");
+#     std::env::set_var("OPTIONAL_DOC_PROXY", "");
+#     std::env::set_var("OPTIONAL_DOC_TIMEOUT", "30");
+# }
+let config = AppConfig::from_env()?;
+assert_eq!(config.api_key.as_deref(), Some("secret"));
+assert!(config.proxy.is_none());
+assert_eq!(config.timeout, Some(30));
+# Ok(())
+# }
+```
+
+`env_var_opt` can only be used for `Option<T>` fields; for any other field it
+fails to compile.
+
+To set a value only in some environments, use `env_partial_match`, or
+`env_match` to make a variable optional in some environments and required in
+others. Both are described in [Environments](crate::docs::environments).
 
 ## Nested structs
 
@@ -263,6 +303,7 @@ it is shared by several applications, use `env_include` as described in
 | String literal | `"8080"` | Yes |
 | Array, tuple, map | `[1, 2]`, `(1, "a")`, `{ a: 1 }` | Yes |
 | Environment variable | `env_var::PORT` | Yes |
+| Optional environment variable | `env_var_opt::PORT` | Yes |
 | Rust expression | `8080`, `Duration::from_secs(30)` | No |
 | `None` | `None` | No |
 | Nested struct | `ServerConfig { .. }` | – |

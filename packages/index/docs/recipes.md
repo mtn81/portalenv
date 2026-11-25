@@ -32,8 +32,11 @@ fn main() {
 
 ## Default values for optional variables
 
-`env_var::NAME` requires the variable to be set. For a variable that may be
-omitted, write a small helper and call it as a
+`env_var::NAME` requires the variable to be set. If the field can be an
+`Option<T>`, read the variable with
+[`env_var_opt::NAME`](crate::docs::mapping#optional-values) and apply the
+default where the value is used. To keep a plain field with a default value,
+write a small helper and call it as a
 [Rust expression](crate::docs::mapping#rust-expressions). The `?` operator can
 be used in mapping expressions, and
 [`EnvStrValue::from_env_var`](crate::EnvStrValue::from_env_var) reads and

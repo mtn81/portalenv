@@ -31,8 +31,8 @@ PortalEnv provides a clearer view of your configuration.
 Embed environment configuration directly in your Rust code with dedicated derive macros.
 
 - Native Rust expressions as configuration values.
-- Environment variable references.
-- Value switching by environment name.
+- Environment variable references, required or optional (`env_var` / `env_var_opt`).
+- Value switching by environment name, with match guards.
 - Nested object configuration.
 - Inclusion and override of other env configurations.
 - Type-safe implicit conversion from string values, including custom value types.
@@ -76,7 +76,12 @@ use std::collections::{HashMap, HashSet};
             },
             title: env_partial_match {
                 "prd" => "portalenv mail"
-            }
+            },
+            // Optional locally (unset or empty gives None), required in stg / prd
+            reply_to: env_match {
+                "local" => env_var_opt::EMAIL_REPLY_TO,
+                "stg" | "prd" => env_var::EMAIL_REPLY_TO,
+            },
         },
         demo: DemoConfig {
             vec: ["this", "is", "a", "demo"],
@@ -106,6 +111,7 @@ pub struct ServerConfig {
 pub struct EmailConfig {
     address: EmailAddress,
     title: Option<String>,
+    reply_to: Option<String>,
 }
 pub struct EmailAddress(String);
 impl FromEnvStrValue for EmailAddress {

@@ -45,6 +45,20 @@ where
     }
 }
 
+impl<T> FromEnvStrValue for Option<T>
+where
+    T: FromEnvStrValue,
+{
+    fn from_env_str(s: EnvStrValue) -> Result<Self> {
+        // Empty values are common, e.g. `${VAR:-}` in Docker Compose, so treat them as unset.
+        if s.is_empty() {
+            Ok(None)
+        } else {
+            T::from_env_str(s).map(Some)
+        }
+    }
+}
+
 impl<T> FromEnvStrValue for HashSet<T>
 where
     T: FromEnvStrValue + Eq + std::hash::Hash,
@@ -183,6 +197,21 @@ impl EnvStrValue {
             })
     }
 
+    /// Like [`EnvStrValue::from_env_var`], but returns `None` when the variable is not set
+    /// or is empty (or whitespace only).
+    pub fn from_env_var_opt(name: &'static str, var: &str) -> Result<Option<Self>> {
+        // Empty values are common, e.g. `${VAR:-}` in Docker Compose, so treat them as unset.
+        match Self::from_env_var(name, var) {
+            Ok(value) if value.is_empty() => Ok(None),
+            Ok(value) => Ok(Some(value)),
+            Err(Error::EnvVarError {
+                source: std::env::VarError::NotPresent,
+                ..
+            }) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn convert<T: FromEnvStrValue>(self) -> Result<T> {
         T::from_env_str(self)
     }
@@ -285,6 +314,46 @@ mod tests {
                 source: std::env::VarError::NotPresent,
             }) if var == "ENV_STR_VALUE_TEST_NOT_SET"
         ));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_from_env_var_opt() {
+        unsafe {
+            std::env::set_var("ENV_STR_VALUE_OPT_TEST_SET", " value ");
+            std::env::set_var("ENV_STR_VALUE_OPT_TEST_EMPTY", "");
+            std::env::set_var("ENV_STR_VALUE_OPT_TEST_BLANK", "  ");
+            std::env::remove_var("ENV_STR_VALUE_OPT_TEST_NOT_SET");
+        }
+
+        assert_eq!(
+            EnvStrValue::from_env_var_opt("test", "ENV_STR_VALUE_OPT_TEST_SET").unwrap(),
+            Some(EnvStrValue::new("test", "value"))
+        );
+        for var in [
+            "ENV_STR_VALUE_OPT_TEST_EMPTY",
+            "ENV_STR_VALUE_OPT_TEST_BLANK",
+            "ENV_STR_VALUE_OPT_TEST_NOT_SET",
+        ] {
+            assert_eq!(EnvStrValue::from_env_var_opt("test", var).unwrap(), None);
+        }
+    }
+
+    #[test]
+    fn test_convert_option() {
+        let r: Option<String> = EnvStrValue::new("test", "test").convert().unwrap();
+        assert_eq!(r, Some("test".to_string()));
+
+        let r: Option<u32> = EnvStrValue::new("test", "1").convert().unwrap();
+        assert_eq!(r, Some(1));
+
+        for value in ["", "  ", r#""""#] {
+            let r: Option<u32> = EnvStrValue::new("test", value).convert().unwrap();
+            assert_eq!(r, None, "{value:?}");
+        }
+
+        let r: Result<Option<u32>> = EnvStrValue::new("test", "x").convert();
+        assert!(matches!(r.unwrap_err(), Error::ValConversionError(_)));
     }
 
     #[test]
